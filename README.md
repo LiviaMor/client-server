@@ -54,6 +54,8 @@ O projeto usa apenas a biblioteca padrão do Java — **sem dependências extern
 Além do cliente de linha de comando, há uma **interface web simples** (gateway
 leve) que traduz ações do navegador em requisições ao servidor TCP.
 
+![Interface web do SiCA — envio e listagem de arquivos](docs/interface-web.png)
+
 ---
 
 ## Arquitetura
