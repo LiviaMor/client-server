@@ -1,7 +1,7 @@
 # SiCA — Sistema de Compartilhamento de Arquivos
 
 > **Disciplina:** Desenvolvimento de Software Cliente/Servidor
-> **Professor:** Thalles Santos
+> **Professor:** Prof. Esp. Thalles Bruno
 > **Curso:** Análise e Desenvolvimento de Sistemas — PUC-GO
 > **Atividade:** Fórum Avaliativo
 
