@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>br.edu.pucgo</groupId>
+    <artifactId>sica</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>SiCA - Sistema de Compartilhamento de Arquivos</name>
+    <description>
+        Aplicacao cliente/servidor em Java para transferencia de arquivos via
+        sockets TCP. Usa apenas a biblioteca padrao do Java; o Maven cuida do
+        build e do gerenciamento de dependencias (ponto de extensao para o
+        futuro). Contem servidor TCP, cliente CLI e um gateway web opcional.
+    </description>
+
+    <properties>
+        <!-- Compila para Java 17 (mesma versao do repositorio de referencia). -->
+        <maven.compiler.release>17</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <!--
+        Sem dependencias externas: o projeto usa somente a biblioteca padrao
+        (java.net, java.io, java.nio e com.sun.net.httpserver, todos do JDK).
+        Este bloco fica pronto para receber dependencias no futuro (ex.: JUnit,
+        driver de banco, etc.), que e a principal vantagem de adotar o Maven.
+    -->
+    <dependencies>
+    </dependencies>
+
+    <build>
+        <!-- Nome do JAR gerado em target/. -->
+        <finalName>sica-${project.version}</finalName>
+
+        <plugins>
+            <!-- Compilacao para Java 17. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+
+            <!--
+                Permite executar cada componente com "mvn exec:java", sem precisar
+                montar o classpath na mao. A classe principal e escolhida pela
+                propriedade -Dexec.mainClass=... (veja o README).
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>
