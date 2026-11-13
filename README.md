@@ -1,316 +1,433 @@
-# SiCA — Sistema de Compartilhamento de Arquivos
+# angel-signature
 
-> **Disciplina:** Desenvolvimento de Software Cliente/Servidor
-> **Professor:** Prof. Esp. Thalles Bruno
-> **Curso:** Análise e Desenvolvimento de Sistemas — PUC-GO
-> **Atividade:** Fórum Avaliativo
+> **Angel Signature — Anjos Tecnologia**
+> Serviço de assinatura eletrônica de documentos PDF, construído sobre o **SiCA**
+> (Sistema de Compartilhamento de Arquivos via sockets TCP).
 
----
-
-## Enunciado
-
-> É muito comum empresas utilizarem um sistema de compartilhamento de arquivos
-> entre as máquinas da organização (geralmente, o sistema é conhecido pelo
-> acrônimo **"SiCA" — Sistema de Compartilhamento de Arquivos**). Nesse contexto,
-> considere o problema de realizar a transferência de um arquivo qualquer via
-> rede de computadores. Desenvolva uma aplicação na linguagem de programação
-> utilizada na disciplina para realizar essa tarefa, entre um **cliente** e um
-> **servidor**. Utilize **sockets TCP** na sua construção.
->
-> O cliente deverá poder, após conectar-se ao servidor, fazer o **envio** de um
-> arquivo, **listar** todos os arquivos presentes no servidor e, por fim,
-> **baixar** algum dos arquivos que estejam disponíveis. O servidor, por sua
-> vez, deve receber e processar requisições de maneira a realizar tais
-> atividades.
->
-> Documente o seu código na forma de comentários detalhados junto aos principais
-> métodos implementados. Descreva de maneira suficiente o funcionamento da sua
-> aplicação.
-
-### Como este projeto atende ao enunciado
-
-| Requisito do enunciado                          | Onde é atendido                                            |
-|-------------------------------------------------|-----------------------------------------------------------|
-| Linguagem da disciplina (**Java**)              | Todo o projeto, apenas biblioteca padrão                  |
-| **Sockets TCP** entre cliente e servidor        | `ServerSocket`/`Socket` (`Servidor`, `ClienteHandler`, `Cliente`) |
-| Cliente **envia** arquivo (upload)              | Comando `UPLOAD` — menu opção 1 / interface web           |
-| Cliente **lista** arquivos                      | Comando `LIST` — menu opção 2 / interface web             |
-| Cliente **baixa** arquivo (download)            | Comando `DOWNLOAD` — menu opção 3 / interface web         |
-| Servidor **processa requisições**               | Thread por conexão (`ClienteHandler`)                     |
-| **Comentários detalhados** nos métodos          | Javadoc em todas as classes principais                    |
-| **Descrição** do funcionamento                  | Este README                                               |
+| | |
+|---|---|
+| **Projeto** | Projeto Integrador — PUC Goiás |
+| **Curso** | Análise e Desenvolvimento de Sistemas |
+| **Professor** | Prof. Esp. Thalles Bruno |
+| **Alunos** | Livia, Kassia, Luciana, Igor e Gustavo |
+| **Empresa parceira** | Angel Signature — Anjos Tecnologia |
 
 ---
 
-Aplicação cliente-servidor em **Java** para transferência de arquivos via rede,
-usando **sockets TCP**. O cliente pode, após conectar-se ao servidor:
+## Sumário
 
-- **enviar** um arquivo (upload);
-- **listar** todos os arquivos disponíveis no servidor;
-- **baixar** um arquivo (download).
+- [Visão geral](#visão-geral)
+- [O que torna a assinatura válida](#o-que-torna-a-assinatura-válida)
+- [Arquitetura](#arquitetura)
+- [Fluxo da assinatura](#fluxo-da-assinatura)
+- [Tecnologias](#tecnologias)
+- [Como executar](#como-executar)
+- [Configuração (variáveis de ambiente)](#configuração-variáveis-de-ambiente)
+- [API](#api)
+- [Segurança](#segurança)
+- [Testes](#testes)
+- [Estrutura do projeto](#estrutura-do-projeto)
+- [Status e próximos passos](#status-e-próximos-passos)
+- [Validade jurídica e limitações](#validade-jurídica-e-limitações)
+- [Base do projeto: SiCA (sockets TCP)](#base-do-projeto-sica-sockets-tcp)
 
-O projeto usa apenas a biblioteca padrão do Java — **sem dependências externas**.
+---
 
-Além do cliente de linha de comando, há uma **interface web simples** (gateway
-leve) que traduz ações do navegador em requisições ao servidor TCP.
+## Visão geral
 
-![Interface web do SiCA — envio e listagem de arquivos](docs/interface-web.png)
+O **angel-signature** permite que uma empresa envie um contrato em PDF para uma
+ou mais pessoas assinarem pelo navegador, sem instalar nada e sem criar conta:
+
+1. O **emissor** envia o PDF e cadastra os signatários (nome, e-mail e posição da
+   assinatura na página).
+2. Cada **signatário** recebe por e-mail um **link único** (deep link), abre o
+   documento no navegador, digita o nome, desenha a assinatura e confirma.
+   Cada link assina **uma única vez**.
+3. Quando todos assinam, o serviço gera o **PDF final**: com as assinaturas nos
+   campos, uma **página de auditoria** e um **selo digital PAdES** com
+   **carimbo de tempo** (RFC 3161).
+4. O PDF final é enviado por e-mail a todos e publicado no servidor de arquivos
+   do SiCA, onde pode ser listado e baixado.
+
+Tudo usa ferramentas **gratuitas**. O certificado digital usado é **de teste
+(autoassinado)**; trocar por um certificado **A1 ICP-Brasil** real é apenas
+configuração, sem alterar código.
+
+---
+
+## O que torna a assinatura válida
+
+O desenho na tela é **apenas uma imagem**. A validade vem do **conjunto de
+evidências** registrado pelo serviço:
+
+| Evidência | O que prova |
+|---|---|
+| **Hash SHA-256** do documento, conferido no navegador e no servidor | O signatário assinou exatamente o documento que viu |
+| **Link único e secreto** por signatário (guardado só como hash) | Acesso ao e-mail do signatário |
+| **Nome digitado**, conferido com o do convite | Ato afirmativo de identificação |
+| **Trilha de auditoria** imutável (data/hora, IP, navegador, hash) | Quem fez o quê e quando |
+| **Selo digital PAdES** com o certificado do serviço | Qualquer alteração posterior no PDF é detectável |
+| **Carimbo de tempo RFC 3161** (FreeTSA) | Quando o documento foi finalizado, atestado por terceiro |
 
 ---
 
 ## Arquitetura
 
 ```
-                 (A) núcleo exigido — sockets TCP
-   ┌────────────────┐        socket TCP        ┌───────────────────────┐
-   │  Cliente CLI   │ ───────────────────────► │   Servidor SiCA (TCP) │
-   │  (Cliente.java)│                          │  thread por conexão   │
-   └────────────────┘                          │  LIST/UPLOAD/DOWNLOAD │
-                                               └───────────┬───────────┘
-   ┌────────────────┐   HTTP    ┌───────────┐  socket TCP  │  filesystem
-   │  Navegador     │ ────────► │ Gateway   │ ────────────►│  (server-files/)
-   │  (interface web)│          │ Web (HTTP)│              ▼
-   └────────────────┘           └───────────┘         arquivos
+ Navegador (signatário)          Emissor (curl / sistema)
+   /assinar/{token}                 X-Admin-Key
+        │  HTTP                          │  HTTP
+        ▼                                ▼
+ ┌──────────────────────────────────────────────────────┐
+ │                GatewayWeb (HTTP, Java)               │
+ │   /sign/...  (signatário)     /envelopes/... (emissor)│
+ │                                                      │
+ │   sica.assinatura                                    │
+ │   ├── servico     regras: envelope, assinatura,      │
+ │   │               finalização                        │
+ │   ├── pdf         PDFBox (imagens, manifesto)        │
+ │   │               BouncyCastle (selo PAdES, RFC 3161)│
+ │   ├── repositorio SQLite (dados + auditoria)         │
+ │   └── email       console | Resend (API HTTP)        │
+ └───────┬──────────────────┬──────────────────┬────────┘
+         │                  │                  │
+         ▼                  ▼                  ▼
+   storage/<id>/      FreeTSA.org        server-files/
+   original.pdf       (carimbo de        (PDF final visível no
+   final.pdf          tempo)             LIST/DOWNLOAD do SiCA)
+                                               ▲
+                                               │ socket TCP
+                                      Servidor SiCA / Cliente CLI
 ```
 
-O **núcleo** da aplicação é o par Cliente/Servidor sobre **sockets TCP**. O
-gateway web é apenas uma fachada opcional: ele próprio age como um cliente TCP
-do servidor SiCA.
-
-### Estrutura de diretórios
-
-```
-cliente-server/
-├── pom.xml                            # build e dependências (Maven)
-├── src/
-│   └── main/
-│       └── java/
-│           └── sica/
-│               ├── common/Protocolo.java      # comandos e helpers do protocolo
-│               ├── server/Servidor.java       # aceita conexões (thread por cliente)
-│               ├── server/ClienteHandler.java # processa requisições de um cliente
-│               ├── client/Cliente.java        # cliente CLI interativo
-│               └── web/
-│                   ├── SicaTcpClient.java     # cliente TCP usado pelo gateway
-│                   └── GatewayWeb.java         # servidor HTTP + interface web
-├── target/             # gerado pelo Maven — classes e JAR
-├── server-files/       # criado em runtime — arquivos no servidor
-├── client-downloads/   # criado em runtime — downloads do cliente CLI
-├── logs/               # logs de execução (conteúdo não versionado)
-└── README.md
-```
+O núcleo TCP do SiCA continua intacto. O módulo de assinatura é ativado no
+`GatewayWeb` somente quando a variável `ADMIN_KEY` está definida.
 
 ---
 
-## Protocolo de comunicação
+## Fluxo da assinatura
 
-Como o TCP entrega um fluxo contínuo de bytes (sem noção de "mensagem"),
-definimos um protocolo de aplicação próprio, todo sobre
-`DataInputStream`/`DataOutputStream`.
+```mermaid
+sequenceDiagram
+    participant E as Emissor
+    participant S as Angel Signature
+    participant M as E-mail
+    participant A as Signatário (navegador)
+    participant T as FreeTSA
 
-| Comando    | Cliente envia                                   | Servidor responde                                  |
-|------------|-------------------------------------------------|----------------------------------------------------|
-| `LIST`     | `"LIST"`                                         | `int qtd` + `qtd` × (`String nome`, `long tamanho`)|
-| `UPLOAD`   | `"UPLOAD"`, `String nome`, `long tamanho`, bytes | `String status`, `String mensagem`                 |
-| `DOWNLOAD` | `"DOWNLOAD"`, `String nome`                      | `String status`; se `OK`: `long tamanho` + bytes   |
-| `SAIR`     | `"SAIR"`                                         | (encerra a conexão)                                |
-
-- **Strings** são enviadas com `writeUTF` (prefixadas pelo tamanho).
-- **Arquivos** são transferidos em **blocos de 8 KB** (`Protocolo.transferir`),
-  precedidos pelo tamanho total (`long`), evitando carregar tudo em memória.
-
-### Segurança
-
-O servidor **sanitiza** o nome recebido (`resolverSeguro`): descarta componentes
-de caminho e garante que o arquivo resolvido permaneça dentro de `server-files/`,
-prevenindo *path traversal* (ex.: `../../etc/passwd`).
-
-### Concorrência
-
-O servidor usa o modelo **thread por conexão**: cada cliente aceito é atendido em
-uma `Thread` dedicada (`ClienteHandler`), permitindo múltiplos clientes
-simultâneos.
-
----
-
-## Pré-requisitos (todos os sistemas)
-
-É necessário ter o **JDK 17 ou superior** e o **Maven** instalados. O projeto usa
-apenas a biblioteca padrão do Java (sem dependências externas); o Maven cuida do
-*build* e fica pronto como ponto de extensão para dependências futuras. Verifique
-se `java` e `mvn` estão disponíveis no terminal:
-
-```bash
-java -version
-mvn -version
+    E->>S: POST /envelopes (PDF)
+    S->>S: SHA-256, grava original, auditoria
+    E->>S: POST /envelopes/{id}/signers
+    E->>S: POST /envelopes/{id}/send
+    S->>M: convite com link único
+    M->>A: e-mail
+    A->>S: GET /assinar/{token} (página) e /sign/{token}
+    S-->>A: dados, páginas do PDF, hash
+    A->>A: confere o SHA-256 do PDF no navegador
+    A->>S: POST /sign/{token} (nome, hash, aceite, PNG)
+    S->>S: valida e grava a assinatura (uma única vez)
+    Note over S: quando o último assina
+    S->>S: insere assinaturas + página de auditoria
+    S->>T: pede carimbo de tempo
+    T-->>S: token RFC 3161
+    S->>S: selo PAdES, grava final.pdf, COMPLETED
+    S->>M: PDF final para todos
 ```
 
-Se algum comando não for reconhecido, instale-os:
-
-- **macOS:** `brew install openjdk@17 maven` (ou baixe o JDK da Adoptium/Temurin).
-- **Windows:** baixe o JDK em <https://adoptium.net> (marque "Add to PATH") e o
-  Maven em <https://maven.apache.org/download.cgi> (adicione a pasta `bin` ao PATH).
-- **Linux (Debian/Ubuntu):** `sudo apt install openjdk-17-jdk maven`
-  (Fedora: `sudo dnf install java-17-openjdk-devel maven`).
-
-> Todos os comandos abaixo devem ser executados **a partir da raiz do projeto**
-> (a pasta que contém o `pom.xml` e este `README.md`).
+Estados do envelope: `DRAFT → SENT → COMPLETED` (desvios: `DECLINED` quando um
+signatário recusa; `EXPIRED` e `CANCELED` previstos).
+Estados do signatário: `PENDING → VIEWED → SIGNED` (ou `DECLINED`).
 
 ---
 
-## Passo a passo por sistema operacional
+## Tecnologias
 
-O funcionamento é o mesmo em todos os sistemas — muda apenas a **sintaxe do
-terminal** em pequenos detalhes. Em todos os casos você vai:
+| Camada | Tecnologia |
+|---|---|
+| Linguagem / build | Java 17 + Maven |
+| Servidor HTTP | `com.sun.net.httpserver` (JDK) |
+| PDF (imagens, página de auditoria, renderização) | Apache PDFBox 3.0.8 |
+| Selo PAdES e carimbo de tempo | BouncyCastle 1.87 |
+| Banco de dados | SQLite (`sqlite-jdbc` 3.54.1.0) |
+| Carimbo de tempo | [FreeTSA.org](https://freetsa.org) (RFC 3161) |
+| E-mail | Console (desenvolvimento) ou [Resend](https://resend.com) (API HTTP) |
+| Certificado de teste | OpenSSL (`scripts/gerar-certificado-teste.sh`) |
+| Testes | JUnit 6 |
+| Frontend do signatário | HTML + CSS + JavaScript puro (sem frameworks) |
 
-1. **compilar** o projeto uma vez com o Maven (gera a pasta `target/`);
-2. abrir **terminais separados** para o servidor e para o cliente/interface web.
+---
 
-> **Porta padrão:** o servidor escuta em `localhost:5000` por padrão. **No macOS**,
-> a porta 5000 costuma estar ocupada pelo *AirPlay Receiver* (ControlCenter); nesse
-> caso, suba em outra porta, por exemplo `5050`, passando-a como argumento (veja
-> abaixo). A interface web abre em `http://localhost:8080`.
+## Como executar
 
-### 🍎 macOS (Terminal / zsh) · 🐧 Linux (bash) · 🪟 Windows (PowerShell)
+### Pré-requisitos
 
-Os comandos do Maven são iguais nos três sistemas.
+- **JDK 17+** e **Maven** (`java -version`, `mvn -version`)
+- **OpenSSL** (para gerar o certificado de teste)
+- Acesso à internet para o carimbo de tempo do FreeTSA (ou `TSA_URL=none` em
+  desenvolvimento offline)
 
-**1) Compilar / gerar o JAR** (uma vez, ou sempre que alterar o código):
+### 1. Compilar e testar
 
 ```bash
 mvn clean package
 ```
 
-Isso compila os fontes e gera `target/sica-1.0.0.jar`.
-
-**2) Iniciar o servidor** — deixe este terminal aberto:
+### 2. Gerar o certificado de teste
 
 ```bash
-mvn exec:java -Dexec.mainClass=sica.server.Servidor
-# escolher outra porta (recomendado no macOS): 
-mvn exec:java -Dexec.mainClass=sica.server.Servidor -Dexec.args="5050"
+scripts/gerar-certificado-teste.sh certs
 ```
 
-**3a) Iniciar o cliente de linha de comando** — em um **segundo** terminal:
+O script pede uma senha e cria `certs/ac-teste.crt` (AC de teste, pública) e
+`certs/servico.p12` (certificado do serviço). A pasta `certs/` está no
+`.gitignore` e **nunca deve ser versionada**.
+
+### 3. Subir o serviço
 
 ```bash
-mvn exec:java -Dexec.mainClass=sica.client.Cliente
-# apontando host/porta: 
-mvn exec:java -Dexec.mainClass=sica.client.Cliente -Dexec.args="localhost 5050"
-```
+export ADMIN_KEY="troque-por-uma-chave-forte"
+export SIGNING_CERT_PATH="certs/servico.p12"
+export SIGNING_CERT_PASSWORD="<a senha do passo 2>"
+export BASE_URL="http://localhost:8080"
 
-**3b) OU iniciar a interface web** — em um segundo terminal:
-
-```bash
 mvn exec:java -Dexec.mainClass=sica.web.GatewayWeb
-# escolher porta web / host / porta TCP do servidor: 
+```
+
+Com `EMAIL_PROVIDER=console` (padrão), os e-mails, inclusive o **link de
+assinatura**, aparecem no terminal.
+
+### 4. Criar e enviar um envelope
+
+```bash
+# Cria o envelope com o PDF
+curl -H "X-Admin-Key: $ADMIN_KEY" \
+     -F "titulo=Contrato de Prestação de Serviços" \
+     -F "arquivo=@contrato.pdf" \
+     http://localhost:8080/envelopes
+# -> {"id":"<ID>", "sha256Original":"...", "status":"DRAFT", ...}
+
+# Adiciona um signatário (coordenadas em pontos do PDF, origem no canto inferior esquerdo)
+curl -H "X-Admin-Key: $ADMIN_KEY" \
+     -d "nome=Fulano de Tal" -d "email=fulano@exemplo.com" \
+     -d pagina=1 -d x=72 -d y=100 -d largura=200 -d altura=60 \
+     http://localhost:8080/envelopes/<ID>/signers
+
+# Envia os convites
+curl -H "X-Admin-Key: $ADMIN_KEY" -X POST http://localhost:8080/envelopes/<ID>/send
+```
+
+Abra o link impresso no terminal (`http://localhost:8080/assinar/<token>`),
+assine e, ao final, baixe o PDF selado:
+
+```bash
+curl -H "X-Admin-Key: $ADMIN_KEY" -o final.pdf \
+     http://localhost:8080/envelopes/<ID>/download
+```
+
+> **Leitores de PDF:** com o certificado de teste, o Adobe Reader mostra o selo
+> como "não confiável" até que `certs/ac-teste.crt` seja importado como
+> certificado confiável. Isso é esperado em demonstrações.
+
+---
+
+## Configuração (variáveis de ambiente)
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `ADMIN_KEY` | — | **Obrigatória** para ativar o módulo. Chave das rotas do emissor (`X-Admin-Key`) |
+| `SIGNING_CERT_PATH` | — | Arquivo `.p12`/`.pfx` do certificado. Sem ele, a finalização fica desativada |
+| `SIGNING_CERT_PASSWORD` | — | Senha do `.p12` |
+| `TSA_URL` | `https://freetsa.org/tsr` | Servidor RFC 3161. `none` desativa (só desenvolvimento) |
+| `BASE_URL` | `http://localhost:8080` | Endereço público usado nos links dos e-mails |
+| `EMAIL_PROVIDER` | `console` | `console` ou `resend` |
+| `RESEND_API_KEY` | — | Chave do Resend (obrigatória com `EMAIL_PROVIDER=resend`) |
+| `EMAIL_FROM` | `SiCA <onboarding@resend.dev>` | Remetente |
+| `SICA_DB_PATH` | `data/assinatura.db` | Banco SQLite |
+| `SICA_STORAGE_DIR` | `storage` | PDFs originais e finais |
+| `SICA_SERVER_FILES_DIR` | `server-files` | Onde o PDF final é publicado para o SiCA (`none` desativa) |
+| `MAX_PDF_BYTES` | `20971520` (20 MB) | Tamanho máximo do PDF |
+| `TOKEN_VALIDADE_DIAS` | `7` | Validade do link de assinatura |
+
+> **Resend:** sem domínio verificado, o Resend só entrega e-mails ao endereço da
+> própria conta. Para enviar a outras pessoas é preciso verificar um domínio.
+> Não é necessário MCP: o serviço chama a API HTTP do Resend diretamente.
+
+---
+
+## API
+
+### Emissor (cabeçalho `X-Admin-Key`)
+
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/envelopes` | Cria envelope (multipart: `titulo`, `arquivo`) |
+| GET | `/envelopes/{id}` | Status do envelope e dos signatários |
+| POST | `/envelopes/{id}/signers` | Adiciona signatário (`nome`, `email`, `pagina`, `x`, `y`, `largura`, `altura`) |
+| POST | `/envelopes/{id}/send` | Envia ou reenvia convites (o reenvio invalida os links anteriores) |
+| POST | `/envelopes/{id}/finalize` | Repete a finalização (ex.: se a TSA estava fora do ar) |
+| GET | `/envelopes/{id}/download` | Baixa o PDF final selado |
+| GET | `/envelopes/{id}/audit` | Trilha de auditoria (JSON) |
+
+### Signatário (o token do link é a credencial)
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/assinar/{token}` | Página de assinatura (deep link) |
+| GET | `/sign/{token}` | Dados do convite (registra a visualização) |
+| GET | `/sign/{token}/documento` | PDF original |
+| GET | `/sign/{token}/paginas/{n}` | Página renderizada em PNG |
+| POST | `/sign/{token}` | Assina (multipart: `nome`, `sha256`, `aceite=true`, `assinatura` PNG) |
+| POST | `/sign/{token}/decline` | Recusa com `motivo` |
+| GET | `/sign/{token}/final` | PDF final, após a conclusão |
+
+Erros seguem o formato `{"erro": "mensagem"}`, com códigos HTTP 400, 401, 404,
+405, 409, 410 (link expirado), 413, 429 (limite de requisições) e 503
+(finalização temporariamente indisponível).
+
+---
+
+## Segurança
+
+- **Tokens** de 32 bytes (`SecureRandom`), armazenados **apenas como hash**.
+- **Assinatura única** garantida por atualização atômica no banco, testada com
+  requisições simultâneas.
+- **Auditoria imutável**: triggers do SQLite bloqueiam `UPDATE` e `DELETE`.
+- **Original nunca sobrescrito**; o PDF final é um arquivo novo com hash próprio.
+- **Chave privada fora do repositório** (`certs/`, `*.p12`, `*.pfx` no `.gitignore`).
+- **Validação de entrada**: PDF por assinatura de bytes e leitura completa; PNG
+  com limite de dimensões antes de decodificar; tamanho máximo de requisição;
+  nomes de arquivo nunca usados em caminhos (sem *path traversal*).
+- **Página do signatário** com CSP restritiva, `X-Frame-Options: DENY`,
+  `Referrer-Policy: no-referrer` e `Cache-Control: no-store`.
+- **Limite de requisições** por IP nas rotas públicas.
+- Comparação da chave de administrador em tempo constante.
+
+---
+
+## Testes
+
+```bash
+mvn clean package
+```
+
+São **129 testes** JUnit, incluindo:
+
+- assinatura com hash diferente, link expirado, segunda assinatura e oito
+  assinaturas simultâneas do mesmo link (apenas uma é aceita);
+- adulteração de 1 byte e conteúdo acrescentado depois do selo (detectados);
+- TSA fora do ar (a assinatura não se perde e a finalização pode ser repetida);
+- fluxo HTTP completo com certificado `.p12` e uma TSA RFC 3161 local.
+
+O PDF final também foi validado com uma ferramenta externa (`pdfsig`, do
+poppler): *"Signature is Valid"* e *"Total document signed"*.
+
+---
+
+## Estrutura do projeto
+
+```
+angel-signature/
+├── pom.xml
+├── scripts/gerar-certificado-teste.sh   # AC de teste + certificado do serviço
+├── docs/
+│   ├── PLANO-ASSINATURA.md              # plano e decisões de implementação
+│   └── interface-web.png
+├── src/main/java/sica/
+│   ├── assinatura/                      # módulo de assinatura eletrônica
+│   │   ├── config/      Configuracao (variáveis de ambiente)
+│   │   ├── modelo/      Envelope, Signatario, EventoAuditoria...
+│   │   ├── repositorio/ SQLite (JDBC)
+│   │   ├── servico/     envelopes, signatários, assinatura, finalização
+│   │   ├── pdf/         montagem, selo PAdES, carimbo de tempo, verificação
+│   │   ├── email/       console e Resend
+│   │   ├── seguranca/   hashes e tokens
+│   │   └── web/         rotas HTTP do emissor e do signatário
+│   ├── server/          servidor TCP do SiCA
+│   ├── client/          cliente CLI do SiCA
+│   ├── common/          protocolo TCP
+│   └── web/             GatewayWeb (HTTP)
+├── src/main/resources/assinatura-web/   # página do signatário (HTML/CSS/JS)
+└── src/test/java/                       # testes JUnit
+```
+
+---
+
+## Status e próximos passos
+
+| Etapa | Situação |
+|---|---|
+| 0. Fundação (Maven, SQLite, certificado de teste) | ✅ Concluída |
+| 1. Envelopes e hash | ✅ Concluída |
+| 2. Signatários e envio de convites | ✅ Concluída |
+| 3. Tela do signatário e assinatura única | ✅ Concluída |
+| 4. PDF final com selo PAdES e carimbo de tempo | ✅ Concluída |
+| 5. Verificação pública (`POST /verify`) | ⏳ Pendente — o verificador já existe; falta expor a rota |
+| 6. Expiração, cancelamento e acabamento | ⏳ Pendente |
+
+Ideias para o futuro: painel web do emissor, ordem de assinatura, webhooks,
+OCR para PDFs escaneados e assinatura qualificada ICP-Brasil do signatário.
+Detalhes em [`docs/PLANO-ASSINATURA.md`](docs/PLANO-ASSINATURA.md).
+
+---
+
+## Validade jurídica e limitações
+
+- Trata-se de **assinatura eletrônica** (simples/avançada), nos termos da
+  **MP 2.200-2/2001** e da **Lei 14.063/2020**. Não é assinatura qualificada
+  ICP-Brasil do signatário.
+- O selo PAdES é do **serviço**, não do signatário: ele garante integridade e
+  data, não a identidade pessoal.
+- A identificação baseia-se no **acesso ao e-mail**. Quem receber o link
+  encaminhado consegue assinar; por isso o link é pessoal, expira e o nome
+  digitado é registrado.
+- O certificado incluído é **de teste**. Em produção, use um certificado A1 da
+  empresa e HTTPS.
+
+---
+
+## Base do projeto: SiCA (sockets TCP)
+
+O angel-signature nasceu do **SiCA — Sistema de Compartilhamento de Arquivos**,
+atividade da disciplina de Desenvolvimento de Software Cliente/Servidor.
+O SiCA continua funcionando de forma independente:
+
+| Requisito original | Onde é atendido |
+|---|---|
+| Sockets TCP entre cliente e servidor | `Servidor`, `ClienteHandler`, `Cliente` |
+| Enviar arquivo (upload) | Comando `UPLOAD` |
+| Listar arquivos | Comando `LIST` |
+| Baixar arquivo (download) | Comando `DOWNLOAD` |
+| Várias conexões | Uma thread por cliente (`ClienteHandler`) |
+
+![Interface web do SiCA](docs/interface-web.png)
+
+### Protocolo TCP
+
+| Comando | Cliente envia | Servidor responde |
+|---|---|---|
+| `LIST` | `"LIST"` | `int qtd` + `qtd` × (`String nome`, `long tamanho`) |
+| `UPLOAD` | `"UPLOAD"`, `String nome`, `long tamanho`, bytes | `String status`, `String mensagem` |
+| `DOWNLOAD` | `"DOWNLOAD"`, `String nome` | `String status`; se `OK`: `long tamanho` + bytes |
+| `SAIR` | `"SAIR"` | encerra a conexão |
+
+### Executar o SiCA
+
+```bash
+mvn clean package
+
+# Servidor TCP (no macOS a porta 5000 costuma estar ocupada pelo AirPlay; use 5050)
+mvn exec:java -Dexec.mainClass=sica.server.Servidor -Dexec.args="5050"
+
+# Cliente de linha de comando (outro terminal)
+mvn exec:java -Dexec.mainClass=sica.client.Cliente -Dexec.args="localhost 5050"
+
+# Interface web (outro terminal): http://localhost:8080
 mvn exec:java -Dexec.mainClass=sica.web.GatewayWeb -Dexec.args="8080 localhost 5050"
 ```
 
-Depois abra <http://localhost:8080> no navegador.
-
-> **Alternativa sem Maven em runtime:** após `mvn clean package`, você também pode
-> executar direto pelas classes compiladas:
-> `java -cp target/classes sica.server.Servidor 5050`
-> (troque a classe por `sica.client.Cliente` ou `sica.web.GatewayWeb` conforme o caso).
-> No Windows, o separador de classpath entre múltiplos diretórios é `;` (não `:`).
-> Se o Firewall do Windows perguntar, autorize o Java a comunicar na rede local.
+Os PDFs finais assinados são publicados em `server-files/` e aparecem
+automaticamente no `LIST` e no `DOWNLOAD` do SiCA.
 
 ---
 
-## Usando a aplicação
-
-**Cliente de linha de comando** — apresenta o menu:
-
-```
-1 - Enviar arquivo (upload)
-2 - Listar arquivos do servidor
-3 - Baixar arquivo (download)
-4 - Sair
-```
-
-- Opção **1**: informe o caminho de um arquivo local para enviar ao servidor.
-- Opção **2**: lista os arquivos disponíveis no servidor (nome e tamanho).
-- Opção **3**: informe o nome de um arquivo para baixá-lo.
-- Downloads do cliente CLI são salvos em `client-downloads/`.
-
-**Interface web** — em <http://localhost:8080> você pode escolher um arquivo e
-enviar, ver a lista de arquivos no servidor e clicar em "baixar" em cada um.
-
-Os arquivos recebidos pelo servidor ficam em `server-files/`. Ambas as pastas
-(`server-files/` e `client-downloads/`) são criadas automaticamente na primeira
-execução.
-
----
-
-## Teste rápido do fluxo (verificação)
-
-macOS/Linux:
-
-```bash
-# 1. Compilar
-mvn clean package
-
-# 2. Subir o servidor (em um terminal) — porta 5050 para evitar conflito no macOS
-mvn exec:java -Dexec.mainClass=sica.server.Servidor -Dexec.args="5050"
-
-# 3. No cliente (outro terminal): opção 1 (enviar um arquivo qualquer),
-#    opção 2 (listar) e opção 3 (baixar). Aponte para a mesma porta:
-#    mvn exec:java -Dexec.mainClass=sica.client.Cliente -Dexec.args="localhost 5050"
-# 4. Conferir que o arquivo em client-downloads/ é idêntico ao original.
-```
-
-Windows (PowerShell), após enviar e baixar um arquivo, compare os dois:
-
-```powershell
-Compare-Object (Get-Content -Raw origem.txt) (Get-Content -Raw client-downloads\origem.txt)
-# sem saída = arquivos idênticos
-```
-
----
-
-## Solução de problemas
-
-- **`Address already in use` / `BindException` ao subir o servidor:** já existe
-  um servidor rodando na mesma porta (ou uma execução anterior não foi
-  encerrada). **No macOS**, a porta 5000 costuma estar ocupada pelo *AirPlay
-  Receiver* (ControlCenter). Suba em outra porta, por exemplo:
-  `mvn exec:java -Dexec.mainClass=sica.server.Servidor -Dexec.args="5050"`
-  (e aponte o cliente para ela com `-Dexec.args="localhost 5050"`).
-- **`Connection refused` no cliente:** o servidor não está no ar, ou o cliente
-  está usando host/porta diferentes dos do servidor. Suba o servidor primeiro.
-- **`java`/`mvn` não reconhecido:** o JDK ou o Maven não estão instalados ou não
-  estão no PATH (veja os pré-requisitos acima).
-- **Nada aparece no navegador:** confirme que **o servidor** (`Servidor`) **e** o
-  **gateway** (`GatewayWeb`) estão ambos rodando, e que a porta web (8080) não
-  está ocupada por outro programa.
-
-## Melhoria futura — Arquitetura B (versão "produção")
-
-A versão atual (Opção A) atende ao objetivo com o mínimo de peças. Uma evolução
-natural, mais próxima de um sistema real, seria:
-
-```
-Navegador → (HTTP/REST) → API Gateway → (socket TCP) → Servidor SiCA
-                                                          │        │
-                                              filesystem  │        │ metadados
-                                              (bytes dos  ▼        ▼
-                                               arquivos)  disco   PostgreSQL
-```
-
-- **PostgreSQL para metadados** (não para os bytes): guardar nome, tamanho,
-  dono, data de envio e *hash* de cada arquivo. O conteúdo continua no
-  filesystem, que é o padrão recomendado (o banco fica leve e consultável).
-- **Docker Compose** para subir o PostgreSQL (e, opcionalmente, os serviços
-  Java) com um único comando, sem instalar banco na máquina.
-- **Autenticação e controle de acesso** por usuário.
-- **Verificação de integridade** por hash (SHA-256) no upload/download.
-- **Streaming de upload/download** no gateway web (hoje o gateway carrega o
-  arquivo em memória; para arquivos grandes, convém transmitir em blocos).
-
-> Observação sobre WebSocket: ele é um protocolo bidirecional em tempo real,
-> ótimo para chat/notificações, mas **não** é o ideal para transferência de
-> arquivos grandes — para isso, streaming sobre TCP/HTTP é mais adequado.
-> Além disso, "threads" e "WebSocket" resolvem problemas diferentes: threads
-> tratam de **concorrência** no servidor; WebSocket é uma **camada de
-> transporte** de mensagens.
+© Angel Signature — Anjos Tecnologia · Projeto Integrador PUC Goiás
