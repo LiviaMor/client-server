@@ -1,0 +1,20 @@
+# Segredos: nunca versionar chaves privadas ou certificados com chave.
+*.p12
+*.pfx
+*.jks
+*.key
+*.pem
+certs/
+
+# Dados gerados em execucao (banco e PDFs do modulo de assinatura).
+data/
+storage/
+*.db
+*.db-wal
+*.db-shm
+
+# Build.
+target/
+
+# macOS.
+.DS_Store

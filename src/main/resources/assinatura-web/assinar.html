@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Assinatura de documento — SiCA</title>
+  <link rel="stylesheet" href="/assinar/estilo.css">
+  <script src="/assinar/app.js" defer></script>
+</head>
+<body>
+  <main id="conteudo">
+    <h1>Assinatura de documento</h1>
+
+    <p id="carregando" role="status">Carregando o documento…</p>
+    <div id="erro" class="aviso aviso-erro" role="alert" hidden></div>
+
+    <section id="convite" hidden aria-labelledby="titulo-doc">
+      <h2 id="titulo-doc"></h2>
+      <p id="saudacao"></p>
+
+      <dl class="dados">
+        <dt>Hash SHA-256 do documento</dt>
+        <dd><code id="hash"></code></dd>
+        <dt>Conferência no navegador</dt>
+        <dd id="conferencia" role="status">Conferindo…</dd>
+      </dl>
+
+      <p><a id="baixar" href="#" target="_blank" rel="noopener noreferrer">Abrir o PDF original</a></p>
+
+      <div id="paginas" class="paginas" aria-label="Páginas do documento"></div>
+
+      <div id="bloqueio" class="aviso" role="status" hidden></div>
+      <p id="final" hidden><a id="link-final" href="#" download>Baixar o documento assinado (PDF selado)</a></p>
+
+      <form id="form-assinar" hidden novalidate>
+        <h2>Assinar</h2>
+
+        <label for="nome">Digite seu nome completo</label>
+        <input id="nome" name="nome" type="text" autocomplete="name" required maxlength="200">
+        <p class="dica" id="dica-nome">Deve ser igual ao nome do convite.</p>
+
+        <p id="rotulo-quadro">Desenhe sua assinatura no quadro abaixo</p>
+        <div class="quadro">
+          <canvas id="quadro" role="img" aria-labelledby="rotulo-quadro"
+                  aria-describedby="dica-quadro"></canvas>
+        </div>
+        <p class="dica" id="dica-quadro">Use o mouse, o dedo ou uma caneta.</p>
+        <button type="button" id="limpar" class="secundario">Limpar desenho</button>
+
+        <p class="aceite">
+          <input id="aceite" name="aceite" type="checkbox" required>
+          <label for="aceite">Li o documento acima e concordo em assiná-lo eletronicamente.
+            Estou ciente de que data, hora, IP, navegador e o hash do documento serão
+            registrados como evidência.</label>
+        </p>
+
+        <button type="submit" id="botao-assinar">Assinar documento</button>
+        <p id="status-assinar" role="status" aria-live="polite"></p>
+      </form>
+
+      <details id="recusar" hidden>
+        <summary>Não quero assinar</summary>
+        <form id="form-recusar" novalidate>
+          <label for="motivo">Motivo da recusa</label>
+          <textarea id="motivo" name="motivo" rows="3" maxlength="500" required></textarea>
+          <button type="submit" class="perigo">Recusar assinatura</button>
+          <p id="status-recusar" role="status" aria-live="polite"></p>
+        </form>
+      </details>
+    </section>
+  </main>
+</body>
+</html>

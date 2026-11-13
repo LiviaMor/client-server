@@ -12,6 +12,8 @@ import java.util.List;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
+import sica.assinatura.config.Configuracao;
+import sica.assinatura.web.AssinaturaApi;
 import sica.common.Protocolo;
 
 /**
@@ -49,9 +51,31 @@ public class GatewayWeb {
         server.createContext("/api/list", this::rotaListar);
         server.createContext("/api/upload", this::rotaUpload);
         server.createContext("/api/download", this::rotaDownload);
+        registrarAssinatura(server);
         server.setExecutor(null); // executor padrao
         server.start();
         System.out.println("[Gateway] Interface web em http://localhost:" + portaHttp);
+    }
+
+    /**
+     * Registra as rotas do modulo de assinatura (/envelopes...), somente se a
+     * variavel de ambiente {@code ADMIN_KEY} estiver definida. Sem ela, o
+     * gateway funciona exatamente como antes. Falhas do modulo nao derrubam o
+     * SiCA: sao registradas e o modulo fica desativado.
+     */
+    private void registrarAssinatura(HttpServer server) {
+        try {
+            Configuracao config = Configuracao.doAmbiente();
+            if (config.adminKey() == null) {
+                System.out.println("[Gateway] Modulo de assinatura desativado (ADMIN_KEY nao definida).");
+                return;
+            }
+            AssinaturaApi.criar(config).registrar(server);
+            System.out.println("[Gateway] Modulo de assinatura ativo (/envelopes, e-mail: "
+                    + config.emailProvider() + ").");
+        } catch (Exception e) {
+            System.err.println("[Gateway] Modulo de assinatura desativado: " + e.getMessage());
+        }
     }
 
     /** Serve a pagina HTML principal. */
