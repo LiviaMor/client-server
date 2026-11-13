@@ -47,12 +47,14 @@ public final class CertificadosDeTeste {
             CHAVE_AC = g.generateKeyPair();
             CHAVE_SERVICO = g.generateKeyPair();
             CHAVE_TSA = g.generateKeyPair();
-            X500Name ac = new X500Name("CN=AC Raiz de Teste JUnit, O=SiCA Teste, C=BR");
+            X500Name ac = new X500Name("CN=AC Raiz de Teste JUnit, O=Angel Signature (TESTE), C=BR");
             AC = emitir(ac, CHAVE_AC.getPrivate(), ac, CHAVE_AC.getPublic(), 1, true, null);
             SERVICO = emitir(ac, CHAVE_AC.getPrivate(),
-                    new X500Name("CN=SiCA Servico de Assinatura (TESTE), O=SiCA Teste, C=BR"),
+                    new X500Name("CN=Angel Signature Servico de Assinatura (TESTE),"
+                            + " O=Angel Signature (TESTE), C=BR"),
                     CHAVE_SERVICO.getPublic(), 2, false, null);
-            TSA = emitir(ac, CHAVE_AC.getPrivate(), new X500Name("CN=TSA de Teste, O=SiCA Teste"),
+            TSA = emitir(ac, CHAVE_AC.getPrivate(),
+                    new X500Name("CN=TSA de Teste, O=Angel Signature (TESTE)"),
                     CHAVE_TSA.getPublic(), 3, false, KeyPurposeId.id_kp_timeStamping);
         } catch (Exception e) {
             throw new ExceptionInInitializerError(e);
@@ -72,7 +74,7 @@ public final class CertificadosDeTeste {
     public static Path gravarP12(Path pasta) throws Exception {
         KeyStore ks = KeyStore.getInstance("PKCS12");
         ks.load(null, null);
-        ks.setKeyEntry("sica-servico", CHAVE_SERVICO.getPrivate(), SENHA.toCharArray(),
+        ks.setKeyEntry("angel-signature", CHAVE_SERVICO.getPrivate(), SENHA.toCharArray(),
                 new Certificate[] {SERVICO, AC});
         Path arquivo = pasta.resolve("servico.p12");
         try (OutputStream out = Files.newOutputStream(arquivo)) {

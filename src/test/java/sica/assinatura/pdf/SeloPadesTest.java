@@ -72,7 +72,7 @@ class SeloPadesTest {
         assertTrue(a.carimboValido());
         assertTrue(a.integra());
         assertNull(a.erro());
-        assertTrue(a.assinante().contains("SiCA Servico de Assinatura"));
+        assertTrue(a.assinante().contains("Angel Signature Servico de Assinatura"));
         assertTrue(a.autoridadeCarimbo().contains("TSA de Teste"));
         assertTrue(a.dataCarimbo().isAfter(antes)
                 && a.dataCarimbo().isBefore(Instant.now().plus(Duration.ofSeconds(2))));

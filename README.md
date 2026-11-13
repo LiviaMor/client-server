@@ -241,7 +241,7 @@ curl -H "X-Admin-Key: $ADMIN_KEY" -o final.pdf \
 | `BASE_URL` | `http://localhost:8080` | Endereço público usado nos links dos e-mails |
 | `EMAIL_PROVIDER` | `console` | `console` ou `resend` |
 | `RESEND_API_KEY` | — | Chave do Resend (obrigatória com `EMAIL_PROVIDER=resend`) |
-| `EMAIL_FROM` | `SiCA <onboarding@resend.dev>` | Remetente |
+| `EMAIL_FROM` | `Angel Signature <onboarding@resend.dev>` | Remetente |
 | `SICA_DB_PATH` | `data/assinatura.db` | Banco SQLite |
 | `SICA_STORAGE_DIR` | `storage` | PDFs originais e finais |
 | `SICA_SERVER_FILES_DIR` | `server-files` | Onde o PDF final é publicado para o SiCA (`none` desativa) |

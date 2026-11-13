@@ -150,7 +150,7 @@ public final class FinalizacaoServico {
                     baseUrl + "/verify", agora);
             Calendar data = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             data.setTimeInMillis(agora.toEpochMilli());
-            selado = selo.selar(montado, "Selo do servico de assinatura SiCA - envelope "
+            selado = selo.selar(montado, "Selo do serviço de assinatura Angel Signature - envelope "
                     + envelope.id(), data);
         } catch (IOException | RuntimeException e) {
             registrarFalha(envelope, e);
@@ -276,14 +276,16 @@ public final class FinalizacaoServico {
                     + " e finalizado em " + DATA.format(Instant.parse(e.concluidoEm())) + ".\n\n"
                     + "O PDF final, selado digitalmente, segue em anexo.\n"
                     + "SHA-256 do arquivo final: " + e.sha256Final() + "\n"
-                    + "Para verificar a autenticidade: " + baseUrl + "/verify\n";
+                    + "Para verificar a autenticidade: " + baseUrl + "/verify\n\n"
+                    + "Angel Signature — Anjos Tecnologia\n";
             String html = "<p>Ol&aacute;, " + SignatarioServico.html(a.signatario().nome())
                     + ".</p><p>O documento <b>" + SignatarioServico.html(e.titulo())
                     + "</b> foi assinado por todos os signat&aacute;rios e finalizado em "
                     + SignatarioServico.html(DATA.format(Instant.parse(e.concluidoEm())))
                     + ".</p><p>O PDF final, selado digitalmente, segue em anexo.</p>"
                     + "<p style=\"color:#666;font-size:12px\">SHA-256 do arquivo final: "
-                    + SignatarioServico.html(e.sha256Final()) + "</p>";
+                    + SignatarioServico.html(e.sha256Final()) + "</p>"
+                    + "<p style=\"color:#666;font-size:12px\">Angel Signature &mdash; Anjos Tecnologia</p>";
             String erro = null;
             try {
                 email.enviar(new Mensagem(para, "Documento assinado: " + e.titulo(), texto, html,

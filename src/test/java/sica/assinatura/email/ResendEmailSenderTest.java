@@ -54,14 +54,14 @@ class ResendEmailSenderTest {
 
     @Test
     void enviaRequisicaoNoFormatoDaApi() throws Exception {
-        ResendEmailSender s = new ResendEmailSender("re_teste", "SiCA <a@b.dev>", endpoint);
+        ResendEmailSender s = new ResendEmailSender("re_teste", "Angel Signature <a@b.dev>", endpoint);
 
         s.enviar(new Mensagem("fulano@exemplo.com", "Assunto \"x\"", "texto\nlinha", "<p>oi</p>"));
 
         assertEquals("Bearer re_teste", autorizacao.get());
         assertTrue(tipo.get().startsWith("application/json"));
         String json = corpo.get();
-        assertTrue(json.contains("\"from\":\"SiCA <a@b.dev>\""), json);
+        assertTrue(json.contains("\"from\":\"Angel Signature <a@b.dev>\""), json);
         assertTrue(json.contains("\"to\":[\"fulano@exemplo.com\"]"), json);
         assertTrue(json.contains("\"subject\":\"Assunto \\\"x\\\"\""), json);
         assertTrue(json.contains("\"text\":\"texto\\nlinha\""), json);

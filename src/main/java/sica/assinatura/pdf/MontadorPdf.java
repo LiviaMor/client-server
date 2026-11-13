@@ -136,7 +136,8 @@ public final class MontadorPdf {
             novaPagina();
             try {
                 linha(NEGRITO, 15, "Manifesto de assinaturas eletrônicas", 22);
-                linha(NORMAL, 9, "Página de auditoria gerada pelo serviço de assinatura SiCA.", 18);
+                linha(NORMAL, 9, "Página de auditoria gerada pelo serviço de assinatura Angel Signature"
+                        + " (Anjos Tecnologia).", 18);
 
                 secao("Documento");
                 campo("Título", e.titulo());

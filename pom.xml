@@ -6,16 +6,16 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>br.edu.pucgo</groupId>
-    <artifactId>sica</artifactId>
+    <artifactId>angel-signature</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>SiCA - Sistema de Compartilhamento de Arquivos</name>
+    <name>Angel Signature</name>
     <description>
-        Aplicacao cliente/servidor em Java para transferencia de arquivos via
-        sockets TCP. Usa apenas a biblioteca padrao do Java; o Maven cuida do
-        build e do gerenciamento de dependencias (ponto de extensao para o
-        futuro). Contem servidor TCP, cliente CLI e um gateway web opcional.
+        Angel Signature (Anjos Tecnologia) - servico de assinatura eletronica de
+        documentos PDF com selo PAdES e carimbo de tempo, construido sobre o
+        SiCA (Sistema de Compartilhamento de Arquivos via sockets TCP).
+        Projeto Integrador - PUC Goias.
     </description>
 
     <properties>
@@ -68,7 +68,7 @@
 
     <build>
         <!-- Nome do JAR gerado em target/. -->
-        <finalName>sica-${project.version}</finalName>
+        <finalName>angel-signature-${project.version}</finalName>
 
         <plugins>
             <!-- Compilacao para Java 17. -->

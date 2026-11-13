@@ -28,7 +28,7 @@ import java.util.Map;
  *       (padrao {@code http://localhost:8080})</li>
  *   <li>{@code EMAIL_PROVIDER} - {@code console} (padrao, imprime o e-mail) ou {@code resend}</li>
  *   <li>{@code RESEND_API_KEY} - chave da API do Resend (obrigatoria se provider=resend)</li>
- *   <li>{@code EMAIL_FROM} - remetente (padrao {@code SiCA <onboarding@resend.dev>})</li>
+ *   <li>{@code EMAIL_FROM} - remetente (padrao {@code Angel Signature <onboarding@resend.dev>})</li>
  * </ul>
  */
 public final class Configuracao {
@@ -64,7 +64,7 @@ public final class Configuracao {
         this.baseUrl = urlBase(valor(ambiente, "BASE_URL", "http://localhost:8080"));
         this.emailProvider = provedorEmail(valor(ambiente, "EMAIL_PROVIDER", "console"));
         this.resendApiKey = valor(ambiente, "RESEND_API_KEY", null);
-        this.emailFrom = valor(ambiente, "EMAIL_FROM", "SiCA <onboarding@resend.dev>");
+        this.emailFrom = valor(ambiente, "EMAIL_FROM", "Angel Signature <onboarding@resend.dev>");
         String publicacao = valor(ambiente, "SICA_SERVER_FILES_DIR", "server-files");
         this.diretorioPublicacao = "none".equalsIgnoreCase(publicacao) ? null : Path.of(publicacao);
     }
@@ -140,7 +140,7 @@ public final class Configuracao {
         return resendApiKey;
     }
 
-    /** Remetente dos e-mails (ex.: {@code SiCA <contato@seudominio.com>}). */
+    /** Remetente dos e-mails (ex.: {@code Angel Signature <contato@seudominio.com>}). */
     public String emailFrom() {
         return emailFrom;
     }

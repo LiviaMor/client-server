@@ -24,6 +24,13 @@ main {
 }
 
 h1 { font-size: 1.5rem; }
+.marca {
+  margin: .5rem 0 0;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cor-primaria);
+}
 h2 { font-size: 1.2rem; margin-top: 1.5rem; }
 
 .dados { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; }
@@ -98,3 +105,5 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 
 details { margin: 1rem 0; }
 summary { cursor: pointer; color: var(--cor-perigo); }
+
+.rodape { margin: 2rem 0 1rem; color: var(--cor-suave); font-size: .85rem; text-align: center; }

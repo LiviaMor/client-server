@@ -25,7 +25,7 @@ class ConfiguracaoTest {
         assertEquals("http://localhost:8080", c.baseUrl());
         assertEquals("console", c.emailProvider());
         assertNull(c.resendApiKey());
-        assertEquals("SiCA <onboarding@resend.dev>", c.emailFrom());
+        assertEquals("Angel Signature <onboarding@resend.dev>", c.emailFrom());
     }
 
     @Test

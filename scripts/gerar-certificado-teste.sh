@@ -46,7 +46,7 @@ export SICA_P12_PASS="$SENHA"
 # --- AC raiz de teste (valida por 10 anos) ---
 openssl req -x509 -newkey rsa:3072 -nodes -sha256 -days 3650 \
   -keyout "$SAIDA/ac-teste.key" -out "$SAIDA/ac-teste.crt" \
-  -subj "/C=BR/O=SiCA Teste/CN=SiCA AC Raiz de Teste" \
+  -subj "/C=BR/O=Angel Signature (TESTE)/CN=Angel Signature AC Raiz de Teste" \
   -addext "basicConstraints=critical,CA:TRUE,pathlen:0" \
   -addext "keyUsage=critical,keyCertSign,cRLSign"
 chmod 600 "$SAIDA/ac-teste.key"
@@ -54,7 +54,7 @@ chmod 600 "$SAIDA/ac-teste.key"
 # --- Certificado do servico (valido por 2 anos), assinado pela AC de teste ---
 openssl req -newkey rsa:3072 -nodes -sha256 \
   -keyout "$TMP/servico.key" -out "$TMP/servico.csr" \
-  -subj "/C=BR/O=SiCA Teste/CN=SiCA Servico de Assinatura (TESTE)"
+  -subj "/C=BR/O=Angel Signature (TESTE)/CN=Angel Signature Servico de Assinatura (TESTE)"
 
 cat > "$TMP/servico.ext" <<'EOF'
 basicConstraints=critical,CA:FALSE
@@ -73,7 +73,7 @@ openssl x509 -req -sha256 -days 730 \
 # --- Empacota em PKCS#12 (chave + certificado + cadeia) ---
 openssl pkcs12 -export \
   -inkey "$TMP/servico.key" -in "$TMP/servico.crt" -certfile "$SAIDA/ac-teste.crt" \
-  -name "sica-servico" -passout env:SICA_P12_PASS \
+  -name "angel-signature" -passout env:SICA_P12_PASS \
   -out "$SAIDA/servico.p12"
 chmod 600 "$SAIDA/servico.p12"
 

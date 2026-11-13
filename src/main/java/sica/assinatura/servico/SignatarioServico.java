@@ -229,7 +229,8 @@ public final class SignatarioServico {
                 + "Acesse o link abaixo para ler e assinar:\n" + link + "\n\n"
                 + "Este link e pessoal e intransferivel; nao o encaminhe.\n"
                 + "Valido ate " + expira + " (UTC).\n"
-                + "Hash SHA-256 do documento: " + e.sha256Original() + "\n";
+                + "Hash SHA-256 do documento: " + e.sha256Original() + "\n\n"
+                + "Angel Signature — Anjos Tecnologia\n";
         String html = "<p>Ol&aacute;, " + html(s.nome()) + ".</p>"
                 + "<p>Voc&ecirc; foi convidado(a) a assinar o documento <b>"
                 + html(e.titulo()) + "</b>.</p>"
@@ -237,7 +238,8 @@ public final class SignatarioServico {
                 + "<p>Este link &eacute; pessoal e intransfer&iacute;vel; n&atilde;o o encaminhe."
                 + "<br>V&aacute;lido at&eacute; " + html(expira.toString()) + " (UTC).</p>"
                 + "<p style=\"color:#666;font-size:12px\">Hash SHA-256 do documento: "
-                + html(e.sha256Original()) + "</p>";
+                + html(e.sha256Original()) + "</p>"
+                + "<p style=\"color:#666;font-size:12px\">Angel Signature &mdash; Anjos Tecnologia</p>";
         return new Mensagem(s.email(), assunto, texto, html);
     }
 
