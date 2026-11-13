@@ -17,6 +17,7 @@
 ## Sumário
 
 - [Visão geral](#visão-geral)
+- [Painel web](#painel-web)
 - [O que torna a assinatura válida](#o-que-torna-a-assinatura-válida)
 - [Arquitetura](#arquitetura)
 - [Fluxo da assinatura](#fluxo-da-assinatura)
@@ -29,6 +30,7 @@
 - [Estrutura do projeto](#estrutura-do-projeto)
 - [Status e próximos passos](#status-e-próximos-passos)
 - [Validade jurídica e limitações](#validade-jurídica-e-limitações)
+- [Termos de Privacidade e Uso](#termos-de-privacidade-e-uso)
 - [Base do projeto: SiCA (sockets TCP)](#base-do-projeto-sica-sockets-tcp)
 
 ---
@@ -38,8 +40,8 @@
 O **angel-signature** permite que uma empresa envie um contrato em PDF para uma
 ou mais pessoas assinarem pelo navegador, sem instalar nada e sem criar conta:
 
-1. O **emissor** envia o PDF e cadastra os signatários (nome, e-mail e posição da
-   assinatura na página).
+1. O **emissor** entra no painel web, envia o PDF e cadastra os signatários (nome,
+   e-mail e posição da assinatura na página).
 2. Cada **signatário** recebe por e-mail um **link único** (deep link), abre o
    documento no navegador, digita o nome, desenha a assinatura e confirma.
    Cada link assina **uma única vez**.
@@ -52,6 +54,29 @@ ou mais pessoas assinarem pelo navegador, sem instalar nada e sem criar conta:
 Tudo usa ferramentas **gratuitas**. O certificado digital usado é **de teste
 (autoassinado)**; trocar por um certificado **A1 ICP-Brasil** real é apenas
 configuração, sem alterar código.
+
+---
+
+## Painel web
+
+Ao abrir `https://localhost:8080`, o emissor informa a **chave de administrador**
+(`ADMIN_KEY`) e acessa três áreas:
+
+| Área | O que faz |
+|---|---|
+| **Compartilhamento** | Envia, lista e baixa arquivos do servidor SiCA (sockets TCP) |
+| **Assinaturas** | Cria o documento (título + PDF + signatários), envia ou reenvia os convites, finaliza e baixa o PDF assinado |
+| **Auditoria** | Indicadores (enviados, aguardando, concluídos, recusados), **quem assinou** em cada documento e a trilha de eventos (data, signatário, IP, navegador, hash) |
+
+A tela de entrada mostra a logo e o slogan *"Sua assinatura, protegida."*. O rodapé
+traz o link para os [Termos de Privacidade e Uso](#termos-de-privacidade-e-uso)
+(`/termos`). Os signatários não usam o painel: eles abrem o link recebido por e-mail
+(`/assinar/{token}`).
+
+O frontend é HTML, CSS e JavaScript puros, com visual no estilo shadcn/ui (tema claro,
+azul da logo). Os arquivos ficam em `src/main/resources/painel/` (emissor) e
+`src/main/resources/assinatura-web/` (signatário). Todo texto vindo do servidor entra
+na página por `textContent`, e a política CSP bloqueia scripts e estilos inline.
 
 ---
 
@@ -74,7 +99,7 @@ evidências** registrado pelo serviço:
 ## Arquitetura
 
 ```
- Navegador (signatário)          Emissor (curl / sistema)
+ Navegador (signatário)          Emissor (painel web / curl)
    /assinar/{token}                 X-Admin-Key
         │  HTTP                          │  HTTP
         ▼                                ▼
@@ -102,6 +127,8 @@ evidências** registrado pelo serviço:
 
 O núcleo TCP do SiCA continua intacto. O módulo de assinatura é ativado no
 `GatewayWeb` somente quando a variável `ADMIN_KEY` está definida.
+O `GatewayWeb` também serve o painel (`PainelWeb`) e protege as rotas do SiCA
+(`/api/*`) com a mesma chave.
 
 ---
 
@@ -153,7 +180,7 @@ Estados do signatário: `PENDING → VIEWED → SIGNED` (ou `DECLINED`).
 | E-mail | Console (desenvolvimento) ou [Resend](https://resend.com) (API HTTP) |
 | Certificado de teste | OpenSSL (`scripts/gerar-certificado-teste.sh`) |
 | Testes | JUnit 6 |
-| Frontend do signatário | HTML + CSS + JavaScript puro (sem frameworks) |
+| Frontend (painel do emissor e página do signatário) | HTML + CSS + JavaScript puro, sem frameworks, visual no estilo shadcn/ui |
 
 ---
 
@@ -199,25 +226,39 @@ A pasta `certs/` está no `.gitignore` e **nunca deve ser versionada**.
 
 ### 3. Subir o serviço
 
-```bash
-export ADMIN_KEY="troque-por-uma-chave-forte"
-export SIGNING_CERT_PATH="certs/servico.p12"
-export SIGNING_CERT_PASSWORD="<senha do servico.p12>"
-export HTTPS_KEYSTORE_PATH="certs/https.p12"
-export HTTPS_KEYSTORE_PASSWORD="<senha do https.p12>"
-export BASE_URL="https://localhost:8080"
+Copie o modelo de variáveis e preencha (o `.env` está no `.gitignore` e **nunca deve ser
+versionado**):
 
-mvn exec:java -Dexec.mainClass=sica.web.GatewayWeb
+```bash
+cp .env.example .env
+# edite o .env: ADMIN_KEY, senhas dos certificados, e (opcional) a chave do Resend
+source .env
+```
+
+Suba o servidor TCP do SiCA e, em outro terminal, o gateway web:
+
+```bash
+# terminal 1: servidor TCP (área de compartilhamento)
+mvn exec:java -Dexec.mainClass=sica.server.Servidor -Dexec.args="5050"
+
+# terminal 2: gateway web (painel + assinatura)
+source .env
+mvn exec:java -Dexec.mainClass=sica.web.GatewayWeb -Dexec.args="8080 localhost 5050"
 # [Gateway] Interface web em https://localhost:8080
 ```
 
-Com `EMAIL_PROVIDER=console` (padrão), os e-mails, inclusive o **link de
-assinatura**, aparecem no terminal.
+As variáveis são lidas **apenas na inicialização**: depois de editar o `.env`, rode
+`source .env` e reinicie o gateway.
+
+Com `EMAIL_PROVIDER=console` (padrão), **nenhum e-mail é enviado**: a mensagem, com o
+**link de assinatura**, aparece no terminal do gateway. Para enviar de verdade, use
+`EMAIL_PROVIDER=resend` e a `RESEND_API_KEY`.
 
 ### 4. Criar e enviar um envelope
 
-Nos exemplos, `--cacert certs/ac-teste.crt` faz o `curl` confiar no certificado
-de teste.
+O caminho mais simples é o **painel web** (aba Assinaturas). Pela API, o equivalente é
+abaixo; nos exemplos, `--cacert certs/ac-teste.crt` faz o `curl` confiar no
+certificado de teste.
 
 ```bash
 # Cria o envelope com o PDF
@@ -254,6 +295,9 @@ curl --cacert certs/ac-teste.crt -H "X-Admin-Key: $ADMIN_KEY" -o final.pdf \
 
 ## Configuração (variáveis de ambiente)
 
+> Referência completa (obrigatoriedade, o que acontece quando falta, perfis de uso) e o padrão de
+> arquitetura em [`docs/AMBIENTE-E-ARQUITETURA.md`](docs/AMBIENTE-E-ARQUITETURA.md).
+
 | Variável | Padrão | Descrição |
 |---|---|---|
 | `ADMIN_KEY` | — | **Obrigatória** para ativar o módulo. Chave das rotas do emissor (`X-Admin-Key`) |
@@ -263,7 +307,7 @@ curl --cacert certs/ac-teste.crt -H "X-Admin-Key: $ADMIN_KEY" -o final.pdf \
 | `SIGNING_CERT_PASSWORD` | — | Senha do `.p12` |
 | `TSA_URL` | `https://freetsa.org/tsr` | Servidor RFC 3161. `none` desativa (só desenvolvimento) |
 | `BASE_URL` | `http://localhost:8080` | Endereço público usado nos links dos e-mails |
-| `EMAIL_PROVIDER` | `console` | `console` ou `resend` |
+| `EMAIL_PROVIDER` | `console` | `console` (só imprime no terminal) ou `resend` (envia de verdade) |
 | `RESEND_API_KEY` | — | Chave do Resend (obrigatória com `EMAIL_PROVIDER=resend`) |
 | `EMAIL_FROM` | `Angel Signature <onboarding@resend.dev>` | Remetente |
 | `SICA_DB_PATH` | `data/assinatura.db` | Banco SQLite |
@@ -284,6 +328,7 @@ curl --cacert certs/ac-teste.crt -H "X-Admin-Key: $ADMIN_KEY" -o final.pdf \
 
 | Método | Rota | Descrição |
 |---|---|---|
+| GET | `/envelopes` | Lista os envelopes (mais recentes primeiro, até 200) com seus signatários |
 | POST | `/envelopes` | Cria envelope (multipart: `titulo`, `arquivo`) |
 | GET | `/envelopes/{id}` | Status do envelope e dos signatários |
 | POST | `/envelopes/{id}/signers` | Adiciona signatário (`nome`, `email`, `pagina`, `x`, `y`, `largura`, `altura`) |
@@ -291,6 +336,21 @@ curl --cacert certs/ac-teste.crt -H "X-Admin-Key: $ADMIN_KEY" -o final.pdf \
 | POST | `/envelopes/{id}/finalize` | Repete a finalização (ex.: se a TSA estava fora do ar) |
 | GET | `/envelopes/{id}/download` | Baixa o PDF final selado |
 | GET | `/envelopes/{id}/audit` | Trilha de auditoria (JSON) |
+
+### Compartilhamento SiCA (cabeçalho `X-Admin-Key`)
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/list` | Lista os arquivos do servidor TCP |
+| POST | `/api/upload` | Envia um arquivo (multipart) |
+| GET | `/api/download?nome=...` | Baixa um arquivo |
+
+### Páginas públicas
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/` | Painel do emissor (pede a chave na entrada) |
+| GET | `/termos` | Termos de Privacidade e Uso |
 
 ### Signatário (o token do link é a credencial)
 
@@ -330,6 +390,12 @@ Erros seguem o formato `{"erro": "mensagem"}`, com códigos HTTP 400, 401, 404,
 - **Página do signatário** com CSP restritiva, `X-Frame-Options: DENY`,
   `Referrer-Policy: no-referrer` e `Cache-Control: no-store`.
 - **Limite de requisições** por IP nas rotas públicas.
+- **Rotas do SiCA protegidas:** `/api/list`, `/api/upload` e `/api/download` exigem a chave de
+  administrador (sem ela respondem 401). O painel mantém a chave só na sessão do navegador.
+- **Painel** com CSP restritiva (`script-src`/`style-src` apenas `self`), `X-Frame-Options: DENY`
+  e `no-store`.
+- **Limite conhecido:** o protocolo TCP do SiCA (porta 5050) não tem autenticação nem TLS.
+  Mantenha-o em rede interna e **não o exponha à internet**.
 - Comparação da chave de administrador em tempo constante.
 
 ---
@@ -340,7 +406,7 @@ Erros seguem o formato `{"erro": "mensagem"}`, com códigos HTTP 400, 401, 404,
 mvn clean package
 ```
 
-São **135 testes** JUnit, incluindo:
+São **136 testes** JUnit, incluindo:
 
 - servidor HTTPS: TLS válido, recusa de HTTP simples, de TLS antigo e de
   certificado não confiável;
@@ -348,7 +414,8 @@ São **135 testes** JUnit, incluindo:
   assinaturas simultâneas do mesmo link (apenas uma é aceita);
 - adulteração de 1 byte e conteúdo acrescentado depois do selo (detectados);
 - TSA fora do ar (a assinatura não se perde e a finalização pode ser repetida);
-- fluxo HTTP completo com certificado `.p12` e uma TSA RFC 3161 local.
+- fluxo HTTP completo com certificado `.p12` e uma TSA RFC 3161 local;
+- listagem de envelopes e proteção das rotas pela chave de administrador.
 
 O PDF final também foi validado com uma ferramenta externa (`pdfsig`, do
 poppler): *"Signature is Valid"* e *"Total document signed"*.
@@ -362,8 +429,10 @@ angel-signature/
 ├── pom.xml
 ├── scripts/gerar-certificado-teste.sh   # AC de teste + certificado do serviço
 ├── scripts/gerar-certificado-https.sh   # certificado TLS do servidor web
+├── .env.example                         # modelo das variáveis de ambiente (o .env não é versionado)
 ├── docs/
 │   ├── PLANO-ASSINATURA.md              # plano e decisões de implementação
+│   ├── AMBIENTE-E-ARQUITETURA.md        # variáveis de ambiente e padrão de arquitetura
 │   └── interface-web.png
 ├── src/main/java/sica/
 │   ├── assinatura/                      # módulo de assinatura eletrônica
@@ -378,7 +447,8 @@ angel-signature/
 │   ├── server/          servidor TCP do SiCA
 │   ├── client/          cliente CLI do SiCA
 │   ├── common/          protocolo TCP
-│   └── web/             GatewayWeb (HTTP)
+│   └── web/             GatewayWeb (HTTP), PainelWeb (painel), ServidorHttp (TLS)
+├── src/main/resources/painel/           # painel do emissor, logo e /termos (HTML/CSS/JS)
 ├── src/main/resources/assinatura-web/   # página do signatário (HTML/CSS/JS)
 └── src/test/java/                       # testes JUnit
 ```
@@ -395,12 +465,16 @@ angel-signature/
 | 3. Tela do signatário e assinatura única | ✅ Concluída |
 | 4. PDF final com selo PAdES e carimbo de tempo | ✅ Concluída |
 | Comunicação segura (HTTPS/TLS no servidor web) | ✅ Concluída |
+| Painel web do emissor (compartilhamento, assinaturas e auditoria) | ✅ Concluído |
+| Termos de Privacidade e Uso (`/termos`) | ✅ Publicado — falta revisão jurídica e definir o contato do encarregado |
+| Rotas do SiCA protegidas por chave | ✅ Concluída |
 | 5. Verificação pública (`POST /verify`) e página de consulta | ⏳ Pendente — o verificador já existe; falta expor a rota e a página |
 | TLS no TCP do SiCA (opcional) | ⏳ Pendente |
 | 6. Expiração, cancelamento e acabamento | ⏳ Pendente |
 
-Ideias para o futuro: painel web do emissor, ordem de assinatura, webhooks,
-OCR para PDFs escaneados e assinatura qualificada ICP-Brasil do signatário.
+Ideias para o futuro: código OTP além do link, ordem de assinatura, marcação visual dos
+campos de assinatura no PDF, webhooks, exclusão/retenção de dados, OCR para PDFs
+escaneados e assinatura qualificada ICP-Brasil do signatário.
 Detalhes em [`docs/PLANO-ASSINATURA.md`](docs/PLANO-ASSINATURA.md).
 
 ---
@@ -420,6 +494,17 @@ Detalhes em [`docs/PLANO-ASSINATURA.md`](docs/PLANO-ASSINATURA.md).
 
 ---
 
+## Termos de Privacidade e Uso
+
+A página `/termos` descreve, com base no que o sistema realmente faz: os dados tratados
+(nome, e-mail, imagem da assinatura, IP, navegador, hash), finalidades e bases legais da LGPD,
+compartilhamento (Resend e FreeTSA), medidas de segurança, validade das assinaturas,
+retenção e direitos do titular. É uma **versão de demonstração** e deve ser revisada pela
+área jurídica da Anjos Tecnologia antes de uso comercial. Falta definir o e-mail do
+encarregado de dados (marcador em `src/main/resources/painel/termos.html`).
+
+---
+
 ## Base do projeto: SiCA (sockets TCP)
 
 O angel-signature nasceu do **SiCA — Sistema de Compartilhamento de Arquivos**,
@@ -433,8 +518,6 @@ O SiCA continua funcionando de forma independente:
 | Listar arquivos | Comando `LIST` |
 | Baixar arquivo (download) | Comando `DOWNLOAD` |
 | Várias conexões | Uma thread por cliente (`ClienteHandler`) |
-
-![Interface web do SiCA](docs/interface-web.png)
 
 ### Protocolo TCP
 
@@ -456,7 +539,8 @@ mvn exec:java -Dexec.mainClass=sica.server.Servidor -Dexec.args="5050"
 # Cliente de linha de comando (outro terminal)
 mvn exec:java -Dexec.mainClass=sica.client.Cliente -Dexec.args="localhost 5050"
 
-# Interface web (outro terminal): http://localhost:8080
+# Interface web (outro terminal): https://localhost:8080 (aba Compartilhamento; pede a ADMIN_KEY)
+source .env
 mvn exec:java -Dexec.mainClass=sica.web.GatewayWeb -Dexec.args="8080 localhost 5050"
 ```
 
