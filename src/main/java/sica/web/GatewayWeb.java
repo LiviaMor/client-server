@@ -10,9 +10,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import sica.assinatura.config.Configuracao;
+import sica.assinatura.seguranca.Hashes;
 import sica.assinatura.web.AssinaturaApi;
 import sica.common.Protocolo;
 
@@ -50,10 +52,10 @@ public class GatewayWeb {
         HttpServer server = ServidorHttp.criar(new InetSocketAddress(portaHttp),
                 config.httpsKeystore(), config.httpsSenha());
         boolean https = config.httpsKeystore() != null;
-        server.createContext("/", this::rotaHome);
-        server.createContext("/api/list", this::rotaListar);
-        server.createContext("/api/upload", this::rotaUpload);
-        server.createContext("/api/download", this::rotaDownload);
+        PainelWeb.registrar(server);
+        server.createContext("/api/list", protegida(config, this::rotaListar));
+        server.createContext("/api/upload", protegida(config, this::rotaUpload));
+        server.createContext("/api/download", protegida(config, this::rotaDownload));
         registrarAssinatura(server, config);
         server.setExecutor(null); // executor padrao
         server.start();
@@ -63,6 +65,24 @@ public class GatewayWeb {
         }
         System.out.println("[Gateway] Interface web em " + (https ? "https" : "http")
                 + "://localhost:" + portaHttp);
+    }
+
+    /**
+     * Exige o cabecalho {@code X-Admin-Key} nas rotas do SiCA quando {@code ADMIN_KEY}
+     * esta definida. Sem a variavel, o comportamento original (aberto) e mantido,
+     * somente para desenvolvimento local.
+     */
+    private HttpHandler protegida(Configuracao config, HttpHandler interno) {
+        return ex -> {
+            String chave = config.adminKey();
+            if (chave != null
+                    && !Hashes.iguaisConstante(ex.getRequestHeaders().getFirst("X-Admin-Key"), chave)) {
+                responder(ex, 401, "text/plain", "Chave de administrador ausente ou invalida.".getBytes());
+                ex.close();
+                return;
+            }
+            interno.handle(ex);
+        };
     }
 
     /**
@@ -83,17 +103,6 @@ public class GatewayWeb {
         } catch (Exception e) {
             System.err.println("[Gateway] Modulo de assinatura desativado: " + e.getMessage());
         }
-    }
-
-    /** Serve a pagina HTML principal. */
-    private void rotaHome(HttpExchange ex) throws IOException {
-        if (!"GET".equals(ex.getRequestMethod())) {
-            responder(ex, 405, "text/plain", "Metodo nao permitido".getBytes());
-            return;
-        }
-        byte[] html = PAGINA_HTML.getBytes(StandardCharsets.UTF_8);
-        ex.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
-        responder(ex, 200, null, html);
     }
 
     /** Retorna a listagem de arquivos em JSON (montado manualmente, sem libs). */
@@ -311,77 +320,4 @@ public class GatewayWeb {
         int portaTcp = args.length > 2 ? Integer.parseInt(args[2]) : Protocolo.PORTA_PADRAO;
         new GatewayWeb(portaHttp, hostTcp, portaTcp).iniciar();
     }
-
-    /** Pagina HTML da interface web (embutida para dispensar arquivos estaticos). */
-    private static final String PAGINA_HTML =
-            "<!DOCTYPE html>\n"
-            + "<html lang=\"pt-br\">\n"
-            + "<head>\n"
-            + "  <meta charset=\"utf-8\">\n"
-            + "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-            + "  <title>SiCA - Compartilhamento de Arquivos</title>\n"
-            + "  <style>\n"
-            + "    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #222; }\n"
-            + "    h1 { font-size: 1.4rem; }\n"
-            + "    .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }\n"
-            + "    button { cursor: pointer; padding: .4rem .8rem; border: 1px solid #888; border-radius: 6px; background: #f7f7f7; }\n"
-            + "    button:hover { background: #eee; }\n"
-            + "    ul { list-style: none; padding: 0; }\n"
-            + "    li { display: flex; justify-content: space-between; padding: .4rem 0; border-bottom: 1px solid #eee; }\n"
-            + "    .tam { color: #666; font-size: .85rem; }\n"
-            + "    #status { font-size: .9rem; color: #555; }\n"
-            + "  </style>\n"
-            + "</head>\n"
-            + "<body>\n"
-            + "  <h1>SiCA &mdash; Sistema de Compartilhamento de Arquivos</h1>\n"
-            + "  <div class=\"card\">\n"
-            + "    <h2 style=\"font-size:1.1rem\">Enviar arquivo</h2>\n"
-            + "    <form id=\"formUpload\">\n"
-            + "      <input type=\"file\" name=\"arquivo\" id=\"arquivo\" required>\n"
-            + "      <button type=\"submit\">Enviar</button>\n"
-            + "    </form>\n"
-            + "  </div>\n"
-            + "  <div class=\"card\">\n"
-            + "    <h2 style=\"font-size:1.1rem\">Arquivos no servidor <button onclick=\"carregar()\">Atualizar</button></h2>\n"
-            + "    <ul id=\"lista\"></ul>\n"
-            + "  </div>\n"
-            + "  <p id=\"status\"></p>\n"
-            + "  <script>\n"
-            + "    async function carregar() {\n"
-            + "      const r = await fetch('/api/list');\n"
-            + "      const arquivos = await r.json();\n"
-            + "      const ul = document.getElementById('lista');\n"
-            + "      ul.innerHTML = '';\n"
-            + "      if (arquivos.length === 0) { ul.innerHTML = '<li>Nenhum arquivo.</li>'; return; }\n"
-            + "      for (const a of arquivos) {\n"
-            + "        const li = document.createElement('li');\n"
-            + "        const info = document.createElement('span');\n"
-            + "        info.textContent = a.nome;\n"
-            + "        const tam = document.createElement('span');\n"
-            + "        tam.className = 'tam';\n"
-            + "        tam.textContent = a.tamanho + ' bytes';\n"
-            + "        const link = document.createElement('a');\n"
-            + "        link.href = '/api/download?nome=' + encodeURIComponent(a.nome);\n"
-            + "        link.textContent = 'baixar';\n"
-            + "        const dir = document.createElement('span');\n"
-            + "        dir.append(tam, ' \u00b7 ', link);\n"
-            + "        li.append(info, dir);\n"
-            + "        ul.appendChild(li);\n"
-            + "      }\n"
-            + "    }\n"
-            + "    document.getElementById('formUpload').addEventListener('submit', async (e) => {\n"
-            + "      e.preventDefault();\n"
-            + "      const arquivo = document.getElementById('arquivo').files[0];\n"
-            + "      if (!arquivo) return;\n"
-            + "      const fd = new FormData();\n"
-            + "      fd.append('arquivo', arquivo);\n"
-            + "      document.getElementById('status').textContent = 'Enviando...';\n"
-            + "      const r = await fetch('/api/upload', { method: 'POST', body: fd });\n"
-            + "      document.getElementById('status').textContent = await r.text();\n"
-            + "      carregar();\n"
-            + "    });\n"
-            + "    carregar();\n"
-            + "  </script>\n"
-            + "</body>\n"
-            + "</html>\n";
 }

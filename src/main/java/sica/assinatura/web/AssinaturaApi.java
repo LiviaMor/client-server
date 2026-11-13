@@ -169,6 +169,10 @@ public final class AssinaturaApi {
             }
 
             if (caminho.equals("/envelopes")) {
+                if ("GET".equals(ex.getRequestMethod())) {
+                    listarEnvelopes(ex);
+                    return;
+                }
                 Http.exigirMetodo(ex, "POST");
                 criarEnvelope(ex);
                 return;
@@ -236,6 +240,15 @@ public final class AssinaturaApi {
         Envelope envelope = envelopes.criar(titulo, pdf, Http.ipOrigem(ex), Http.userAgent(ex));
         ex.getResponseHeaders().set("Location", "/envelopes/" + envelope.id());
         Http.json(ex, 201, paraJson(envelope, List.of()));
+    }
+
+    /** Lista os envelopes (mais recentes primeiro) com seus signatarios. */
+    private void listarEnvelopes(HttpExchange ex) throws SQLException, IOException {
+        List<String> itens = new ArrayList<>();
+        for (Envelope e : envelopes.listar()) {
+            itens.add(paraJson(e, signatarios.listar(e.id())));
+        }
+        Http.json(ex, 200, Json.objeto("envelopes", Json.lista(itens)));
     }
 
     private void consultarEnvelope(HttpExchange ex, String id) throws SQLException, IOException {

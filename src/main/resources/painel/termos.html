@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Termos de Privacidade e Uso — Angel Signature</title>
+  <link rel="icon" type="image/png" href="/painel/logo.png">
+  <link rel="stylesheet" href="/painel/painel.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="topo-conteudo">
+      <a class="marca" href="/" aria-label="Angel Signature — página inicial">
+        <img class="logo" src="/painel/logo.png" alt="" width="44" height="44">
+        <span class="marca-texto">ANGEL SIGNATURE</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="conteudo documento">
+    <a class="voltar" href="/">&larr; Voltar</a>
+    <h1>Termos de Privacidade e Uso</h1>
+    <p class="atualizado">Última atualização: 13 de novembro de 2026</p>
+
+    <p class="nota">
+      <strong>Versão de demonstração.</strong> O Angel Signature é um projeto integrador
+      (Análise e Desenvolvimento de Sistemas, PUC Goiás) em parceria com a Anjos Tecnologia.
+      Este texto descreve como o sistema funciona hoje e deve ser revisado pela área jurídica
+      da empresa antes de qualquer uso comercial.
+    </p>
+
+    <h2>1. O que é o Angel Signature</h2>
+    <p>
+      Serviço de assinatura eletrônica de documentos em PDF. Uma pessoa ou empresa (o
+      <em>emissor</em>) envia um documento e indica quem deve assinar (os <em>signatários</em>).
+      Cada signatário recebe por e-mail um link único, lê o documento no navegador e assina,
+      sem criar conta. O serviço é operado pela Anjos Tecnologia.
+    </p>
+
+    <h2>2. Quais dados tratamos</h2>
+    <p><strong>Do emissor:</strong></p>
+    <ul>
+      <li>o arquivo PDF enviado e o título do documento;</li>
+      <li>nome e e-mail de cada signatário e a posição da assinatura no PDF.</li>
+    </ul>
+    <p><strong>Do signatário, no momento do uso:</strong></p>
+    <ul>
+      <li>nome digitado e imagem da assinatura desenhada;</li>
+      <li>aceite do termo de assinatura, data e hora de cada ação;</li>
+      <li>endereço IP e identificação do navegador (user agent);</li>
+      <li>impressão digital (hash SHA-256) do documento que foi visto e assinado;</li>
+      <li>eventos do processo: visualização, assinatura, recusa e o motivo informado.</li>
+    </ul>
+    <p>
+      Não usamos cookies, anúncios nem ferramentas de análise ou rastreamento. No painel do
+      emissor, a chave de acesso fica guardada apenas na sessão do navegador e é apagada ao
+      clicar em Sair ou ao fechar a aba.
+    </p>
+
+    <h2>3. Para que usamos os dados</h2>
+    <ul>
+      <li>conduzir a assinatura: enviar o convite, exibir o documento e registrar a assinatura;</li>
+      <li>comprovar o que foi assinado, por quem, quando e de onde, por meio da trilha de auditoria;</li>
+      <li>gerar o PDF final com as assinaturas, a página de auditoria, o selo digital e o carimbo de tempo;</li>
+      <li>enviar o documento final aos participantes;</li>
+      <li>proteger o serviço contra abuso, com limite de requisições por IP.</li>
+    </ul>
+    <p>
+      Bases legais (Lei 13.709/2018, LGPD, art. 7º): execução de contrato ou de procedimentos
+      preliminares (V), exercício regular de direitos (VI) e consentimento do signatário, dado
+      no aceite da assinatura (I).
+    </p>
+
+    <h2>4. Com quem compartilhamos</h2>
+    <ul>
+      <li>
+        <strong>Provedor de e-mail (Resend):</strong> recebe o endereço e o nome do destinatário,
+        o texto da mensagem e, no envio final, o PDF assinado em anexo.
+      </li>
+      <li>
+        <strong>Autoridade de carimbo de tempo (FreeTSA):</strong> recebe somente uma impressão
+        digital criptográfica (hash), nunca o conteúdo do documento.
+      </li>
+      <li>
+        <strong>Provedor de hospedagem:</strong> quando o serviço estiver publicado na internet,
+        os dados ficam armazenados na infraestrutura contratada.
+      </li>
+    </ul>
+    <p>Não vendemos nem cedemos dados pessoais para fins de marketing.</p>
+
+    <h2>5. Como protegemos</h2>
+    <ul>
+      <li>comunicação cifrada com HTTPS/TLS;</li>
+      <li>link de assinatura único, secreto, com validade (7 dias, por padrão) e de uso único; guardamos apenas um resumo criptográfico do link, nunca o link em si;</li>
+      <li>trilha de auditoria somente de inserção: os registros não podem ser alterados nem apagados pelo sistema;</li>
+      <li>o documento original nunca é sobrescrito; o PDF final recebe selo digital (PAdES) e carimbo de tempo, o que torna qualquer alteração posterior detectável;</li>
+      <li>conferência do hash do documento antes de registrar a assinatura;</li>
+      <li>acesso do emissor protegido por chave de administrador.</li>
+    </ul>
+    <p>Nenhum sistema é totalmente imune a falhas. Em caso de incidente relevante, a Anjos Tecnologia comunicará os afetados e a autoridade competente, conforme a LGPD.</p>
+
+    <h2>6. Validade das assinaturas e limitações</h2>
+    <ul>
+      <li>
+        A assinatura é <strong>eletrônica</strong> (Lei 14.063/2020 e MP 2.200-2/2001). Não é
+        assinatura qualificada com certificado ICP-Brasil do signatário.
+      </li>
+      <li>
+        A identificação do signatário se baseia no acesso ao seu e-mail, no nome digitado e nos
+        registros de auditoria. O selo digital do PDF é do serviço: garante integridade e data,
+        não a identidade pessoal.
+      </li>
+      <li>
+        Na versão de demonstração, o certificado do selo é de teste, e leitores de PDF podem
+        exibi-lo como &ldquo;não confiável&rdquo;.
+      </li>
+      <li>
+        O link é pessoal e intransferível. Quem o encaminhar a terceiros assume o risco de que
+        outra pessoa assine em seu lugar.
+      </li>
+    </ul>
+
+    <h2>7. Regras de uso</h2>
+    <ul>
+      <li>O emissor é responsável pelo conteúdo dos documentos e por ter o direito de enviá-los.</li>
+      <li>O emissor deve informar corretamente nome e e-mail dos signatários e ter fundamento legal para tratar os dados deles.</li>
+      <li>O signatário deve assinar apenas o que leu e concorda; quem discordar pode recusar e informar o motivo.</li>
+      <li>É proibido usar o serviço para fins ilícitos, tentar burlar a segurança, enviar arquivos maliciosos ou sobrecarregar o sistema.</li>
+    </ul>
+
+    <h2>8. Por quanto tempo guardamos</h2>
+    <p>
+      Documentos, assinaturas e a trilha de auditoria são mantidos enquanto o envelope existir,
+      pois servem de prova do ato de assinar. Ainda não há exclusão automática; o prazo de guarda
+      definitivo será definido pela Anjos Tecnologia. Dados necessários para o exercício regular
+      de direitos ou para cumprir obrigação legal podem ser mantidos mesmo após um pedido de
+      exclusão.
+    </p>
+
+    <h2>9. Seus direitos</h2>
+    <p>Nos termos do art. 18 da LGPD, você pode solicitar:</p>
+    <ul>
+      <li>confirmação de que tratamos seus dados e acesso a eles;</li>
+      <li>correção de dados incompletos, inexatos ou desatualizados;</li>
+      <li>anonimização, bloqueio ou eliminação de dados desnecessários ou tratados em desconformidade;</li>
+      <li>portabilidade, quando aplicável;</li>
+      <li>informação sobre com quem compartilhamos seus dados;</li>
+      <li>revogação do consentimento, quando for a base do tratamento.</li>
+    </ul>
+    <p>
+      Para exercer esses direitos, fale com a Anjos Tecnologia pelo canal de contato indicado por
+      quem lhe enviou o documento ou diretamente com a empresa: <strong>[e-mail do encarregado
+      de dados &mdash; a definir pela Anjos Tecnologia]</strong>.
+    </p>
+
+    <h2>10. Disponibilidade e responsabilidade</h2>
+    <p>
+      O serviço depende de terceiros (e-mail, carimbo de tempo, hospedagem) e, na versão de
+      demonstração, é oferecido sem garantia de disponibilidade contínua. Se o carimbo de tempo
+      estiver indisponível, a assinatura é preservada e a finalização do documento pode ser
+      repetida depois.
+    </p>
+
+    <h2>11. Mudanças neste texto</h2>
+    <p>
+      Podemos atualizar estes termos. A data da última atualização aparece no topo desta página.
+      O uso do serviço após a mudança indica ciência da nova versão.
+    </p>
+  </main>
+
+  <footer class="rodape">
+    <a class="rodape-termos" href="/termos">Termos de Privacidade e Uso</a>
+    <span class="rodape-centro">Angel Signature - Anjos Tecnologia 2026</span>
+    <span class="rodape-vazio" aria-hidden="true"></span>
+  </footer>
+</body>
+</html>

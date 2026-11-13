@@ -108,6 +108,13 @@ public final class EnvelopeServico {
         }
     }
 
+    /** Envelopes mais recentes primeiro (ate 200), para o painel do emissor. */
+    public java.util.List<Envelope> listar() throws SQLException {
+        try (Connection c = banco.abrir()) {
+            return EnvelopeRepositorio.listar(c, 200);
+        }
+    }
+
     /** Trilha de auditoria do envelope, em ordem de registro. */
     public java.util.List<sica.assinatura.modelo.EventoAuditoria> auditoria(String id)
             throws SQLException {

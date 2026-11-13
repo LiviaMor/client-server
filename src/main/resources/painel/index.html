@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Angel Signature</title>
+  <link rel="icon" type="image/png" href="/painel/logo.png">
+  <link rel="stylesheet" href="/painel/painel.css">
+  <script src="/painel/painel.js" defer></script>
+</head>
+<body>
+  <header class="topo" id="topo" hidden>
+    <div class="topo-conteudo">
+      <a class="marca" href="/" aria-label="Angel Signature">
+        <img class="logo" src="/painel/logo.png" alt="" width="44" height="44">
+        <span class="marca-texto">ANGEL SIGNATURE</span>
+      </a>
+      <nav id="abas" class="abas" role="tablist" aria-label="Áreas do sistema" hidden>
+        <button type="button" role="tab" class="aba" data-aba="arquivos" aria-selected="true">Compartilhamento</button>
+        <button type="button" role="tab" class="aba" data-aba="assinaturas" aria-selected="false">Assinaturas</button>
+        <button type="button" role="tab" class="aba" data-aba="auditoria" aria-selected="false">Auditoria</button>
+      </nav>
+      <button type="button" id="sair" class="botao ghost sm" hidden>Sair</button>
+    </div>
+  </header>
+
+  <main class="conteudo">
+    <!-- Entrada -->
+    <section id="login" class="login" aria-labelledby="t-login">
+      <img class="login-logo" src="/painel/angel-signature.png" width="260" height="260"
+           alt="Angel Signature — Sua assinatura, protegida.">
+      <div class="cartao estreito">
+        <div class="cartao-topo">
+          <h1 id="t-login" class="titulo">Acesso do emissor</h1>
+          <p class="sub">Informe a chave de administrador para gerenciar arquivos e documentos.</p>
+        </div>
+        <form id="form-login" class="cartao-corpo" novalidate>
+          <label class="rotulo" for="chave">Chave de administrador</label>
+          <input id="chave" class="campo" type="password" autocomplete="off" required>
+          <p id="erro-login" class="msg erro" role="alert" hidden></p>
+          <button type="submit" class="botao">Entrar</button>
+        </form>
+      </div>
+    </section>
+
+    <div id="app" hidden>
+      <p id="aviso-global" class="msg" role="status" hidden></p>
+
+      <!-- Compartilhamento de arquivos (SiCA) -->
+      <section data-painel="arquivos" aria-labelledby="t-arquivos">
+        <h1 id="t-arquivos" class="titulo-pagina">Compartilhamento de arquivos</h1>
+        <p class="sub">Envie e baixe arquivos do servidor SiCA (sockets TCP).</p>
+
+        <div class="cartao">
+          <div class="cartao-topo"><h2 class="titulo">Enviar arquivo</h2></div>
+          <form id="form-upload" class="cartao-corpo linha" novalidate>
+            <input id="arquivo-sica" class="campo" type="file" aria-label="Arquivo para enviar" required>
+            <button type="submit" class="botao">Enviar</button>
+          </form>
+          <p id="status-upload" class="msg cartao-corpo" role="status" hidden></p>
+        </div>
+
+        <div class="cartao">
+          <div class="cartao-topo linha entre">
+            <h2 class="titulo">Arquivos no servidor</h2>
+            <button type="button" id="atualizar-arquivos" class="botao outline sm">Atualizar</button>
+          </div>
+          <div class="tabela-wrap">
+            <table class="tabela">
+              <thead><tr><th>Nome</th><th class="dir">Tamanho</th><th class="dir">Ação</th></tr></thead>
+              <tbody id="lista-arquivos"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Assinatura de documentos -->
+      <section data-painel="assinaturas" hidden aria-labelledby="t-assinaturas">
+        <h1 id="t-assinaturas" class="titulo-pagina">Assinatura de documentos</h1>
+        <p class="sub">Envie um PDF, informe quem deve assinar e dispare os convites por e-mail.</p>
+
+        <div class="cartao">
+          <div class="cartao-topo"><h2 class="titulo">Novo documento</h2></div>
+          <form id="form-envelope" class="cartao-corpo" novalidate>
+            <div class="grade">
+              <div>
+                <label class="rotulo" for="titulo-doc">Título do documento</label>
+                <input id="titulo-doc" class="campo" type="text" maxlength="200" required>
+              </div>
+              <div>
+                <label class="rotulo" for="pdf-doc">Arquivo PDF</label>
+                <input id="pdf-doc" class="campo" type="file" accept="application/pdf,.pdf" required>
+              </div>
+            </div>
+
+            <div class="linha entre sep">
+              <h3 class="subtitulo">Signatários</h3>
+              <button type="button" id="add-signatario" class="botao outline sm">Adicionar signatário</button>
+            </div>
+            <div id="signatarios" class="signatarios"></div>
+
+            <p id="status-envelope" class="msg" role="status" hidden></p>
+            <button type="submit" id="botao-envelope" class="botao">Criar e enviar convites</button>
+          </form>
+        </div>
+
+        <div class="cartao">
+          <div class="cartao-topo linha entre">
+            <h2 class="titulo">Documentos</h2>
+            <button type="button" id="atualizar-envelopes" class="botao outline sm">Atualizar</button>
+          </div>
+          <div class="tabela-wrap">
+            <table class="tabela">
+              <thead>
+                <tr><th>Documento</th><th>Status</th><th>Assinaturas</th><th>Criado em</th><th class="dir">Ações</th></tr>
+              </thead>
+              <tbody id="lista-envelopes"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Auditoria -->
+      <section data-painel="auditoria" hidden aria-labelledby="t-auditoria">
+        <h1 id="t-auditoria" class="titulo-pagina">Auditoria</h1>
+        <p class="sub">Documentos enviados, quem assinou e a trilha de eventos de cada um.</p>
+
+        <div id="resumo" class="resumo" aria-label="Resumo"></div>
+
+        <div class="cartao">
+          <div class="cartao-topo"><h2 class="titulo">Documentos enviados</h2></div>
+          <div class="tabela-wrap">
+            <table class="tabela">
+              <thead>
+                <tr><th>Documento</th><th>Status</th><th>Quem assinou</th><th>Criado em</th><th class="dir">Detalhes</th></tr>
+              </thead>
+              <tbody id="lista-auditoria"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="detalhe" class="cartao" hidden aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="rodape">
+    <a class="rodape-termos" href="/termos">Termos de Privacidade e Uso</a>
+    <span class="rodape-centro">Angel Signature - Anjos Tecnologia 2026</span>
+    <span class="rodape-vazio" aria-hidden="true"></span>
+  </footer>
+</body>
+</html>

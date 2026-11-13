@@ -114,6 +114,25 @@ public final class EnvelopeRepositorio {
         }
     }
 
+    /** Envelopes mais recentes primeiro, limitados a {@code limite} registros. */
+    public static java.util.List<Envelope> listar(Connection c, int limite) throws SQLException {
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        try (PreparedStatement ps = c.prepareStatement(
+                "SELECT id FROM envelopes ORDER BY criado_em DESC LIMIT ?")) {
+            ps.setInt(1, limite);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ids.add(rs.getString(1));
+                }
+            }
+        }
+        java.util.List<Envelope> lista = new java.util.ArrayList<>();
+        for (String id : ids) {
+            buscar(c, id).ifPresent(lista::add);
+        }
+        return lista;
+    }
+
     public static Optional<Envelope> buscar(Connection c, String id) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement(
                 "SELECT id, titulo, status, sha256_original, sha256_final, caminho_original,"

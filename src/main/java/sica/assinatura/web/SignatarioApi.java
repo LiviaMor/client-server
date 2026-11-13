@@ -68,6 +68,7 @@ final class SignatarioApi {
     private final byte[] html;
     private final byte[] js;
     private final byte[] css;
+    private final byte[] logo;
 
     SignatarioApi(AssinaturaServico servico, FinalizacaoServico finalizacao, LimitadorTaxa geral,
                   LimitadorTaxa escrita) {
@@ -78,6 +79,7 @@ final class SignatarioApi {
         this.html = recurso("assinar.html");
         this.js = recurso("app.js");
         this.css = recurso("estilo.css");
+        this.logo = recurso("logo.png");
     }
 
     void registrar(HttpServer server) {
@@ -98,6 +100,8 @@ final class SignatarioApi {
             String caminho = ex.getRequestURI().getPath();
             if (caminho.equals("/assinar/app.js")) {
                 Http.bytes(ex, 200, "text/javascript; charset=utf-8", js);
+            } else if (caminho.equals("/assinar/logo.png")) {
+                Http.bytes(ex, 200, "image/png", logo);
             } else if (caminho.equals("/assinar/estilo.css")) {
                 Http.bytes(ex, 200, "text/css; charset=utf-8", css);
             } else if (ROTA_PAGINA.matcher(caminho).matches()) {

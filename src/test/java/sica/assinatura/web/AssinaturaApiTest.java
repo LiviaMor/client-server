@@ -114,6 +114,25 @@ class AssinaturaApiTest {
     }
 
     @Test
+    void listaEnvelopesDoMaisRecenteParaOMaisAntigoExigindoChave() throws Exception {
+        assertEquals(401, obter("/envelopes", null).statusCode());
+        HttpResponse<String> vazio = obter("/envelopes", CHAVE);
+        assertEquals(200, vazio.statusCode());
+        assertTrue(vazio.body().contains("\"envelopes\":[]"), vazio.body());
+
+        String a = campo(postar(CHAVE, MultipartTest.corpo(BOUNDARY, "Primeiro", "a.pdf",
+                PdfsDeTeste.simples("a"))).body(), "id");
+        Thread.sleep(5);
+        String b = campo(postar(CHAVE, MultipartTest.corpo(BOUNDARY, "Segundo", "b.pdf",
+                PdfsDeTeste.simples("b"))).body(), "id");
+
+        HttpResponse<String> r = obter("/envelopes", CHAVE);
+        assertEquals(200, r.statusCode());
+        assertTrue(r.body().indexOf(b) < r.body().indexOf(a), "mais recente primeiro: " + r.body());
+        assertTrue(r.body().contains("\"signatarios\":[]"));
+    }
+
+    @Test
     void nomeDoArquivoEnviadoNaoInfluenciaOCaminho() throws Exception {
         byte[] pdf = PdfsDeTeste.simples("x");
         HttpResponse<String> r = postar(CHAVE,
@@ -182,7 +201,10 @@ class AssinaturaApiTest {
 
     @Test
     void metodoIncorretoRetorna405() throws Exception {
-        assertEquals(405, obter("/envelopes", CHAVE).statusCode());
+        HttpRequest put = HttpRequest.newBuilder(URI.create(base + "/envelopes"))
+                .header("X-Admin-Key", CHAVE)
+                .DELETE().build();
+        assertEquals(405, http.send(put, BodyHandlers.ofString()).statusCode());
         HttpRequest req = HttpRequest.newBuilder(
                         URI.create(base + "/envelopes/00000000-0000-0000-0000-000000000000"))
                 .header("X-Admin-Key", CHAVE)
