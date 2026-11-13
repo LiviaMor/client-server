@@ -19,6 +19,8 @@ import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
 import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
 import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -68,6 +70,51 @@ public final class CertificadosDeTeste {
     public static CertificadoAssinatura servico() {
         return new CertificadoAssinatura(CHAVE_SERVICO.getPrivate(),
                 new X509Certificate[] {SERVICO, AC});
+    }
+
+    /**
+     * Grava um certificado HTTPS de teste (CN=localhost, SAN localhost e
+     * 127.0.0.1, emitido pela AC de teste) em um .p12.
+     */
+    public static Path gravarP12Https(Path pasta) throws Exception {
+        KeyPair par = CHAVE_SERVICO; // reaproveita a chave (so para teste)
+        Instant agora = Instant.now();
+        JcaX509v3CertificateBuilder b = new JcaX509v3CertificateBuilder(
+                X500Name.getInstance(AC.getSubjectX500Principal().getEncoded()), BigInteger.valueOf(10),
+                Date.from(agora.minus(Duration.ofDays(1))), Date.from(agora.plus(Duration.ofDays(30))),
+                new X500Name("CN=localhost, O=Angel Signature (TESTE)"), par.getPublic());
+        b.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
+        b.addExtension(Extension.keyUsage, true,
+                new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
+        b.addExtension(Extension.extendedKeyUsage, false,
+                new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
+        b.addExtension(Extension.subjectAlternativeName, false, new GeneralNames(new GeneralName[] {
+                new GeneralName(GeneralName.dNSName, "localhost"),
+                new GeneralName(GeneralName.iPAddress, "127.0.0.1")}));
+        X509Certificate cert = new JcaX509CertificateConverter().getCertificate(
+                b.build(new JcaContentSignerBuilder("SHA256withRSA").build(CHAVE_AC.getPrivate())));
+
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        ks.load(null, null);
+        ks.setKeyEntry("https", par.getPrivate(), SENHA.toCharArray(), new Certificate[] {cert, AC});
+        Path arquivo = pasta.resolve("https.p12");
+        try (OutputStream out = Files.newOutputStream(arquivo)) {
+            ks.store(out, SENHA.toCharArray());
+        }
+        return arquivo;
+    }
+
+    /** Contexto TLS de cliente que confia apenas na AC de teste. */
+    public static javax.net.ssl.SSLContext clienteConfiandoNaAc() throws Exception {
+        KeyStore confiaveis = KeyStore.getInstance("PKCS12");
+        confiaveis.load(null, null);
+        confiaveis.setCertificateEntry("ac", AC);
+        javax.net.ssl.TrustManagerFactory tmf = javax.net.ssl.TrustManagerFactory.getInstance(
+                javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init(confiaveis);
+        javax.net.ssl.SSLContext ctx = javax.net.ssl.SSLContext.getInstance("TLS");
+        ctx.init(null, tmf.getTrustManagers(), null);
+        return ctx;
     }
 
     /** Grava o certificado do servico em um .p12 (com a cadeia) e devolve o caminho. */

@@ -172,25 +172,43 @@ Estados do signatário: `PENDING → VIEWED → SIGNED` (ou `DECLINED`).
 mvn clean package
 ```
 
-### 2. Gerar o certificado de teste
+### 2. Gerar os certificados de teste
 
 ```bash
-scripts/gerar-certificado-teste.sh certs
+scripts/gerar-certificado-teste.sh certs     # AC de teste + certificado do selo PAdES
+scripts/gerar-certificado-https.sh certs     # certificado HTTPS do servidor (emitido pela mesma AC)
 ```
 
-O script pede uma senha e cria `certs/ac-teste.crt` (AC de teste, pública) e
-`certs/servico.p12` (certificado do serviço). A pasta `certs/` está no
-`.gitignore` e **nunca deve ser versionada**.
+Os scripts pedem uma senha e criam, em `certs/`:
+
+- `ac-teste.crt`: AC de teste (pública);
+- `servico.p12`: certificado do serviço, usado no selo dos PDFs;
+- `https.p12`: certificado TLS do servidor (`localhost`, `127.0.0.1`).
+
+Para abrir o link pelo celular na mesma rede, passe o IP da máquina:
+`scripts/gerar-certificado-https.sh certs "" 192.168.0.10`.
+
+A pasta `certs/` está no `.gitignore` e **nunca deve ser versionada**.
+
+> **Aviso do navegador:** como a AC é de teste, o navegador mostra "conexão não
+> segura" na primeira vez. Opções: aceitar o aviso na demonstração, importar
+> `certs/ac-teste.crt` como AC confiável (o que vale para o site **e** para o
+> selo dos PDFs), ou usar o [mkcert](https://github.com/FiloSottile/mkcert):
+> `mkcert -install && mkcert -pkcs12 localhost 127.0.0.1`, que gera
+> `localhost+1.p12` (senha `changeit`), confiável no navegador local.
 
 ### 3. Subir o serviço
 
 ```bash
 export ADMIN_KEY="troque-por-uma-chave-forte"
 export SIGNING_CERT_PATH="certs/servico.p12"
-export SIGNING_CERT_PASSWORD="<a senha do passo 2>"
-export BASE_URL="http://localhost:8080"
+export SIGNING_CERT_PASSWORD="<senha do servico.p12>"
+export HTTPS_KEYSTORE_PATH="certs/https.p12"
+export HTTPS_KEYSTORE_PASSWORD="<senha do https.p12>"
+export BASE_URL="https://localhost:8080"
 
 mvn exec:java -Dexec.mainClass=sica.web.GatewayWeb
+# [Gateway] Interface web em https://localhost:8080
 ```
 
 Com `EMAIL_PROVIDER=console` (padrão), os e-mails, inclusive o **link de
@@ -198,30 +216,34 @@ assinatura**, aparecem no terminal.
 
 ### 4. Criar e enviar um envelope
 
+Nos exemplos, `--cacert certs/ac-teste.crt` faz o `curl` confiar no certificado
+de teste.
+
 ```bash
 # Cria o envelope com o PDF
-curl -H "X-Admin-Key: $ADMIN_KEY" \
+curl --cacert certs/ac-teste.crt -H "X-Admin-Key: $ADMIN_KEY" \
      -F "titulo=Contrato de Prestação de Serviços" \
      -F "arquivo=@contrato.pdf" \
-     http://localhost:8080/envelopes
+     https://localhost:8080/envelopes
 # -> {"id":"<ID>", "sha256Original":"...", "status":"DRAFT", ...}
 
 # Adiciona um signatário (coordenadas em pontos do PDF, origem no canto inferior esquerdo)
-curl -H "X-Admin-Key: $ADMIN_KEY" \
+curl --cacert certs/ac-teste.crt -H "X-Admin-Key: $ADMIN_KEY" \
      -d "nome=Fulano de Tal" -d "email=fulano@exemplo.com" \
      -d pagina=1 -d x=72 -d y=100 -d largura=200 -d altura=60 \
-     http://localhost:8080/envelopes/<ID>/signers
+     https://localhost:8080/envelopes/<ID>/signers
 
 # Envia os convites
-curl -H "X-Admin-Key: $ADMIN_KEY" -X POST http://localhost:8080/envelopes/<ID>/send
+curl --cacert certs/ac-teste.crt -H "X-Admin-Key: $ADMIN_KEY" -X POST \
+     https://localhost:8080/envelopes/<ID>/send
 ```
 
-Abra o link impresso no terminal (`http://localhost:8080/assinar/<token>`),
+Abra o link impresso no terminal (`https://localhost:8080/assinar/<token>`),
 assine e, ao final, baixe o PDF selado:
 
 ```bash
-curl -H "X-Admin-Key: $ADMIN_KEY" -o final.pdf \
-     http://localhost:8080/envelopes/<ID>/download
+curl --cacert certs/ac-teste.crt -H "X-Admin-Key: $ADMIN_KEY" -o final.pdf \
+     https://localhost:8080/envelopes/<ID>/download
 ```
 
 > **Leitores de PDF:** com o certificado de teste, o Adobe Reader mostra o selo
@@ -235,6 +257,8 @@ curl -H "X-Admin-Key: $ADMIN_KEY" -o final.pdf \
 | Variável | Padrão | Descrição |
 |---|---|---|
 | `ADMIN_KEY` | — | **Obrigatória** para ativar o módulo. Chave das rotas do emissor (`X-Admin-Key`) |
+| `HTTPS_KEYSTORE_PATH` | — | Certificado TLS do servidor (`.p12`). **Sem ele o servidor usa HTTP sem criptografia** (só desenvolvimento) |
+| `HTTPS_KEYSTORE_PASSWORD` | — | Senha do certificado TLS |
 | `SIGNING_CERT_PATH` | — | Arquivo `.p12`/`.pfx` do certificado. Sem ele, a finalização fica desativada |
 | `SIGNING_CERT_PASSWORD` | — | Senha do `.p12` |
 | `TSA_URL` | `https://freetsa.org/tsr` | Servidor RFC 3161. `none` desativa (só desenvolvimento) |
@@ -288,6 +312,12 @@ Erros seguem o formato `{"erro": "mensagem"}`, com códigos HTTP 400, 401, 404,
 
 ## Segurança
 
+- **Comunicação cifrada (HTTPS/TLS):** o servidor usa o `HttpsServer` do JDK,
+  aceitando apenas **TLS 1.3 e TLS 1.2**. Toda a troca entre o navegador
+  (cliente) e o servidor (documentos, assinaturas, links) é cifrada, e o
+  certificado do servidor impede que um intermediário se passe por ele. Testado:
+  TLS 1.3 negociado, TLS 1.1 recusado, HTTP simples recusado e cliente que não
+  confia no certificado recusado.
 - **Tokens** de 32 bytes (`SecureRandom`), armazenados **apenas como hash**.
 - **Assinatura única** garantida por atualização atômica no banco, testada com
   requisições simultâneas.
@@ -310,8 +340,10 @@ Erros seguem o formato `{"erro": "mensagem"}`, com códigos HTTP 400, 401, 404,
 mvn clean package
 ```
 
-São **129 testes** JUnit, incluindo:
+São **135 testes** JUnit, incluindo:
 
+- servidor HTTPS: TLS válido, recusa de HTTP simples, de TLS antigo e de
+  certificado não confiável;
 - assinatura com hash diferente, link expirado, segunda assinatura e oito
   assinaturas simultâneas do mesmo link (apenas uma é aceita);
 - adulteração de 1 byte e conteúdo acrescentado depois do selo (detectados);
@@ -329,6 +361,7 @@ poppler): *"Signature is Valid"* e *"Total document signed"*.
 angel-signature/
 ├── pom.xml
 ├── scripts/gerar-certificado-teste.sh   # AC de teste + certificado do serviço
+├── scripts/gerar-certificado-https.sh   # certificado TLS do servidor web
 ├── docs/
 │   ├── PLANO-ASSINATURA.md              # plano e decisões de implementação
 │   └── interface-web.png
@@ -361,7 +394,9 @@ angel-signature/
 | 2. Signatários e envio de convites | ✅ Concluída |
 | 3. Tela do signatário e assinatura única | ✅ Concluída |
 | 4. PDF final com selo PAdES e carimbo de tempo | ✅ Concluída |
-| 5. Verificação pública (`POST /verify`) | ⏳ Pendente — o verificador já existe; falta expor a rota |
+| Comunicação segura (HTTPS/TLS no servidor web) | ✅ Concluída |
+| 5. Verificação pública (`POST /verify`) e página de consulta | ⏳ Pendente — o verificador já existe; falta expor a rota e a página |
+| TLS no TCP do SiCA (opcional) | ⏳ Pendente |
 | 6. Expiração, cancelamento e acabamento | ⏳ Pendente |
 
 Ideias para o futuro: painel web do emissor, ordem de assinatura, webhooks,

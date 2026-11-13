@@ -258,6 +258,17 @@ Cada etapa termina com **build verde** (`mvn clean package`) e testes passando.
 > - Com certificado autoassinado, leitores como o Adobe mostram o selo como "não confiável"
 >   até importar `certs/ac-teste.crt` como confiável.
 
+### Etapa 4b — Comunicação segura (HTTPS/TLS) ✔
+- [x] `ServidorHttp`: `HttpsServer` do JDK com keystore PKCS#12 (`HTTPS_KEYSTORE_PATH`/`_PASSWORD`),
+      somente TLS 1.3/1.2. Sem keystore, HTTP com aviso no log (só desenvolvimento).
+      Keystore configurado e inválido impede a subida (não cai para HTTP).
+- [x] `scripts/gerar-certificado-https.sh`: certificado `serverAuth` com SAN (localhost,
+      127.0.0.1, ::1 e hosts extras), emitido pela AC de teste quando existir; `mkcert` documentado.
+- **Verificado:** 135 testes; `openssl s_client` (TLS 1.3, cadeia válida; TLS 1.1 recusado),
+  HTTP simples e cliente sem confiança recusados, fluxo completo de assinatura por HTTPS.
+> Motivação: requisito C do Projeto Integrador (proteção da comunicação cliente-servidor
+> com biblioteca de segurança existente). Também habilita `crypto.subtle` fora de `localhost`.
+
 ### Etapa 5 — Verificação
 - [ ] `POST /verify`: calcula hash, procura no banco, valida o selo e o carimbo.
 - [ ] Resposta: autêntico/íntegro ou o motivo da falha.

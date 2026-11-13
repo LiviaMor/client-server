@@ -22,6 +22,9 @@ import java.util.Map;
  *       (padrao {@code https://freetsa.org/tsr}; {@code none} desativa, so para testes)</li>
  *   <li>{@code SICA_SERVER_FILES_DIR} - pasta do servidor TCP onde o PDF final e
  *       publicado (padrao {@code server-files}; {@code none} desativa)</li>
+ *   <li>{@code HTTPS_KEYSTORE_PATH} - keystore PKCS#12 do certificado HTTPS do
+ *       gateway; sem ela o gateway usa HTTP simples (so desenvolvimento)</li>
+ *   <li>{@code HTTPS_KEYSTORE_PASSWORD} - senha do keystore HTTPS</li>
  *   <li>{@code MAX_PDF_BYTES} - tamanho maximo do PDF (padrao 20 MB)</li>
  *   <li>{@code TOKEN_VALIDADE_DIAS} - validade do link de assinatura (padrao 7)</li>
  *   <li>{@code BASE_URL} - URL publica do frontend, base dos links
@@ -49,6 +52,8 @@ public final class Configuracao {
     private final String resendApiKey;
     private final String emailFrom;
     private final Path diretorioPublicacao;
+    private final Path httpsKeystore;
+    private final String httpsSenha;
 
     /** Cria a configuracao a partir de um mapa (normalmente {@code System.getenv()}). */
     public Configuracao(Map<String, String> ambiente) {
@@ -67,6 +72,22 @@ public final class Configuracao {
         this.emailFrom = valor(ambiente, "EMAIL_FROM", "Angel Signature <onboarding@resend.dev>");
         String publicacao = valor(ambiente, "SICA_SERVER_FILES_DIR", "server-files");
         this.diretorioPublicacao = "none".equalsIgnoreCase(publicacao) ? null : Path.of(publicacao);
+        String keystore = valor(ambiente, "HTTPS_KEYSTORE_PATH", null);
+        this.httpsKeystore = keystore == null ? null : Path.of(keystore);
+        this.httpsSenha = valor(ambiente, "HTTPS_KEYSTORE_PASSWORD", null);
+    }
+
+    /**
+     * Keystore PKCS#12 do certificado HTTPS do gateway, ou {@code null} para
+     * servir em HTTP simples (apenas desenvolvimento).
+     */
+    public Path httpsKeystore() {
+        return httpsKeystore;
+    }
+
+    /** Senha do keystore HTTPS, ou {@code null}. */
+    public String httpsSenha() {
+        return httpsSenha;
     }
 
     /** Atalho que le as variaveis do ambiente real do processo. */

@@ -44,17 +44,25 @@ public class GatewayWeb {
         this.tcp = new SicaTcpClient(hostTcp, portaTcp);
     }
 
-    /** Registra as rotas e inicia o servidor HTTP. */
+    /** Registra as rotas e inicia o servidor HTTP (ou HTTPS, se configurado). */
     public void iniciar() throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress(portaHttp), 0);
+        Configuracao config = Configuracao.doAmbiente();
+        HttpServer server = ServidorHttp.criar(new InetSocketAddress(portaHttp),
+                config.httpsKeystore(), config.httpsSenha());
+        boolean https = config.httpsKeystore() != null;
         server.createContext("/", this::rotaHome);
         server.createContext("/api/list", this::rotaListar);
         server.createContext("/api/upload", this::rotaUpload);
         server.createContext("/api/download", this::rotaDownload);
-        registrarAssinatura(server);
+        registrarAssinatura(server, config);
         server.setExecutor(null); // executor padrao
         server.start();
-        System.out.println("[Gateway] Interface web em http://localhost:" + portaHttp);
+        if (!https) {
+            System.out.println("[Gateway] AVISO: HTTPS desativado (HTTPS_KEYSTORE_PATH nao definido);"
+                    + " a comunicacao nao e cifrada. Use apenas em desenvolvimento.");
+        }
+        System.out.println("[Gateway] Interface web em " + (https ? "https" : "http")
+                + "://localhost:" + portaHttp);
     }
 
     /**
@@ -63,9 +71,8 @@ public class GatewayWeb {
      * gateway funciona exatamente como antes. Falhas do modulo nao derrubam o
      * SiCA: sao registradas e o modulo fica desativado.
      */
-    private void registrarAssinatura(HttpServer server) {
+    private void registrarAssinatura(HttpServer server, Configuracao config) {
         try {
-            Configuracao config = Configuracao.doAmbiente();
             if (config.adminKey() == null) {
                 System.out.println("[Gateway] Modulo de assinatura desativado (ADMIN_KEY nao definida).");
                 return;
