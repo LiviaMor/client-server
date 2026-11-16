@@ -550,3 +550,7 @@ automaticamente no `LIST` e no `DOWNLOAD` do SiCA.
 ---
 
 © Angel Signature — Anjos Tecnologia · Projeto Integrador PUC Goiás
+cd /Users/liviamor/Developer/cliente-server
+  source .env
+  mvn exec:java -Dexec.mainClass=sica.server.Servidor -Dexec.args="5050"          # terminal 1
+  mvn exec:java -Dexec.mainClass=sica.web.GatewayWeb -Dexec.args="8080 localhost 5050"   # terminal 2 (com source .env)
