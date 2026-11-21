@@ -193,6 +193,57 @@ Estados do signatário: `PENDING → VIEWED → SIGNED` (ou `DECLINED`).
 - Acesso à internet para o carimbo de tempo do FreeTSA (ou `TSA_URL=none` em
   desenvolvimento offline)
 
+### Início rápido (recomendado)
+
+Com JDK 17+, Maven e OpenSSL instalados, rode **um comando** na pasta do projeto:
+
+```bash
+scripts/iniciar.sh
+```
+
+Na primeira vez o script:
+
+1. cria o `.env` a partir do `.env.example`, **gerando a `ADMIN_KEY` e as senhas**;
+2. gera os certificados de teste em `certs/`;
+3. compila o projeto e sobe o servidor TCP (porta 5050) e o gateway web (porta 8080).
+
+Depois abra **https://localhost:8080** no navegador do próprio computador, aceite o aviso
+do certificado de teste e entre com a `ADMIN_KEY`. Para ver a chave: `grep ADMIN_KEY .env`.
+`Ctrl+C` encerra os dois servidores.
+
+Nas próximas vezes basta repetir `scripts/iniciar.sh`. Os passos manuais abaixo são
+para quem quer entender ou ajustar cada etapa.
+
+### Configurando o `.env`
+
+O `.env` guarda as configurações e os segredos. Ele **não vai para o Git**. Os campos que
+você precisa conhecer:
+
+| Variável | O que colocar | Onde conseguir |
+|---|---|---|
+| `ADMIN_KEY` | Uma chave forte, que você digita na tela de entrada do painel | Invente: `openssl rand -hex 16` |
+| `SIGNING_CERT_PASSWORD` | Senha do `certs/servico.p12` (selo dos PDFs) | Escolha uma. É a mesma usada ao gerar o certificado |
+| `HTTPS_KEYSTORE_PASSWORD` | Senha do `certs/https.p12` (HTTPS e TLS do TCP) | Escolha uma. É a mesma usada ao gerar o certificado |
+| `EMAIL_PROVIDER` | `console` (o link aparece no terminal) ou `resend` (envia e-mail de verdade) | Comece com `console` |
+| `RESEND_API_KEY` | Só se `EMAIL_PROVIDER=resend` | Crie uma conta em [resend.com](https://resend.com) → *API Keys* |
+| `EMAIL_FROM` | Remetente dos e-mails | Com o Resend sem domínio próprio, mantenha o padrão |
+| `BASE_URL` | Endereço que aparece nos links dos e-mails | `https://localhost:8080` se abrir o link no mesmo computador |
+| `SICA_TLS_CA` | AC em que o cliente TCP confia | Já vem com `certs/ac-teste.crt` |
+
+Regras que evitam os problemas mais comuns:
+
+- **Link do e-mail aberto no celular:** `localhost` aponta para o próprio celular e não
+  funciona. Use o IP do computador no `BASE_URL` (ex.: `https://192.168.0.10:8080`) e gere
+  o certificado com esse IP: `scripts/gerar-certificado-https.sh certs "" 192.168.0.10`.
+- **Resend sem domínio verificado:** só entrega ao e-mail da própria conta do Resend.
+- **Sem internet:** coloque `export TSA_URL="none"` para desativar o carimbo de tempo.
+- **Depois de editar o `.env`:** reinicie com `scripts/iniciar.sh`. As variáveis só são lidas
+  na inicialização.
+- **Nunca** envie o `.env`, a pasta `certs/` ou os `.p12` para o Git. Já estão no `.gitignore`.
+
+### Passos manuais
+
+
 ### 1. Compilar e testar
 
 ```bash
@@ -238,7 +289,8 @@ source .env
 Suba o servidor TCP do SiCA e, em outro terminal, o gateway web:
 
 ```bash
-# terminal 1: servidor TCP (área de compartilhamento)
+# terminal 1: servidor TCP (área de compartilhamento; precisa do .env para o TLS)
+source .env
 mvn exec:java -Dexec.mainClass=sica.server.Servidor -Dexec.args="5050"
 
 # terminal 2: gateway web (painel + assinatura)
@@ -538,11 +590,12 @@ O SiCA continua funcionando de forma independente:
 
 ```bash
 mvn clean package
+source .env   # necessário: o TLS do canal TCP lê o certificado do .env
 
 # Servidor TCP (no macOS a porta 5000 costuma estar ocupada pelo AirPlay; use 5050)
 mvn exec:java -Dexec.mainClass=sica.server.Servidor -Dexec.args="5050"
 
-# Cliente de linha de comando (outro terminal)
+# Cliente de linha de comando (outro terminal, também com 'source .env')
 mvn exec:java -Dexec.mainClass=sica.client.Cliente -Dexec.args="localhost 5050"
 
 # Interface web (outro terminal): https://localhost:8080 (aba Compartilhamento; pede a ADMIN_KEY)
