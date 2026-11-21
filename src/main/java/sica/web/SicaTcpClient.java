@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import sica.common.Protocolo;
+import sica.common.Tls;
 
 /**
  * Cliente TCP programatico do SiCA, usado pelo gateway web.
@@ -46,7 +47,7 @@ public class SicaTcpClient {
      * Consulta o servidor (comando LIST) e devolve a lista de arquivos disponiveis.
      */
     public List<ArquivoInfo> listar() throws IOException {
-        try (Socket socket = new Socket(host, porta);
+        try (Socket socket = Tls.conectar(host, porta);
              DataInputStream in =
                      new DataInputStream(new BufferedInputStream(socket.getInputStream()));
              DataOutputStream out =
@@ -75,7 +76,7 @@ public class SicaTcpClient {
      * @return mensagem de status retornada pelo servidor
      */
     public String upload(String nome, byte[] conteudo) throws IOException {
-        try (Socket socket = new Socket(host, porta);
+        try (Socket socket = Tls.conectar(host, porta);
              DataInputStream in =
                      new DataInputStream(new BufferedInputStream(socket.getInputStream()));
              DataOutputStream out =
@@ -101,7 +102,7 @@ public class SicaTcpClient {
      * @return os bytes do arquivo, ou {@code null} se o servidor nao o encontrou
      */
     public byte[] download(String nome) throws IOException {
-        try (Socket socket = new Socket(host, porta);
+        try (Socket socket = Tls.conectar(host, porta);
              DataInputStream in =
                      new DataInputStream(new BufferedInputStream(socket.getInputStream()));
              DataOutputStream out =

@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import java.util.Scanner;
 
 import sica.common.Protocolo;
+import sica.common.Tls;
 
 /**
  * Cliente do SiCA (interface por linha de comando).
@@ -41,7 +42,7 @@ public class Cliente {
     public void executar() throws IOException {
         Files.createDirectories(diretorioDownloads);
 
-        try (Socket socket = new Socket(host, porta);
+        try (Socket socket = Tls.conectar(host, porta);
              DataInputStream entrada =
                      new DataInputStream(new BufferedInputStream(socket.getInputStream()));
              DataOutputStream saida =

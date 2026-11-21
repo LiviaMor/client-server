@@ -311,6 +311,7 @@ curl --cacert certs/ac-teste.crt -H "X-Admin-Key: $ADMIN_KEY" -o final.pdf \
 | `RESEND_API_KEY` | — | Chave do Resend (obrigatória com `EMAIL_PROVIDER=resend`) |
 | `EMAIL_FROM` | `Angel Signature <onboarding@resend.dev>` | Remetente |
 | `SICA_DB_PATH` | `data/assinatura.db` | Banco SQLite |
+| `SICA_TLS_CA` | `certs/ac-teste.crt` | AC em que o cliente TCP (CLI e gateway) confia |
 | `SICA_STORAGE_DIR` | `storage` | PDFs originais e finais |
 | `SICA_SERVER_FILES_DIR` | `server-files` | Onde o PDF final é publicado para o SiCA (`none` desativa) |
 | `MAX_PDF_BYTES` | `20971520` (20 MB) | Tamanho máximo do PDF |
@@ -394,8 +395,13 @@ Erros seguem o formato `{"erro": "mensagem"}`, com códigos HTTP 400, 401, 404,
   administrador (sem ela respondem 401). O painel mantém a chave só na sessão do navegador.
 - **Painel** com CSP restritiva (`script-src`/`style-src` apenas `self`), `X-Frame-Options: DENY`
   e `no-store`.
-- **Limite conhecido:** o protocolo TCP do SiCA (porta 5050) não tem autenticação nem TLS.
-  Mantenha-o em rede interna e **não o exponha à internet**.
+- **TLS no canal TCP (porta 5050):** o servidor SiCA, o cliente de linha de comando e o
+  gateway usam `SSLServerSocket`/`SSLSocket` (classe `sica.common.Tls`), TLS 1.3/1.2.
+  O servidor usa o mesmo `https.p12`; o cliente só confia na AC indicada em `SICA_TLS_CA`
+  (padrão `certs/ac-teste.crt`) e confere o nome do servidor. Conexão em texto puro não
+  funciona. Testes em `TlsTest`.
+- **Limite conhecido:** o protocolo TCP do SiCA não tem **autenticação de usuário**
+  (qualquer cliente que confie na AC pode listar e baixar). Não o exponha à internet.
 - Comparação da chave de administrador em tempo constante.
 
 ---

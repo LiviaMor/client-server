@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import sica.common.Protocolo;
+import sica.common.Tls;
 
 /**
  * Servidor do SiCA.
@@ -40,7 +41,7 @@ public class Servidor {
     public void iniciar() throws IOException {
         Files.createDirectories(diretorioArquivos);
 
-        try (ServerSocket serverSocket = new ServerSocket(porta)) {
+        try (ServerSocket serverSocket = Tls.criarServidor(porta)) {
             System.out.println("[Servidor] SiCA no ar na porta " + porta);
             System.out.println("[Servidor] Diretorio de arquivos: "
                     + diretorioArquivos.toAbsolutePath());
