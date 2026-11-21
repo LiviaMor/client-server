@@ -128,7 +128,7 @@ export RESEND_API_KEY="re_..."            # destinatário = e-mail da conta
 - Certificado **A1 real** em `SIGNING_CERT_*`; `TSA_URL` de uma TSA confiável.
 - Domínio verificado no Resend e `EMAIL_FROM` desse domínio.
 - `SICA_DB_PATH`, `SICA_STORAGE_DIR` e `SICA_SERVER_FILES_DIR` em **disco persistente**, com backup.
-- O servidor TCP do SiCA **fora da internet** (sem autenticação nem TLS); só rede interna.
+- O servidor TCP do SiCA **fora da internet** (cifrado com TLS, mas sem autenticação de usuário); só rede interna.
 - `ADMIN_KEY` longa e aleatória (por exemplo `openssl rand -hex 24`), trocada se vazar.
 
 ## 1.5 Pastas geradas em execução
@@ -305,7 +305,7 @@ acrescente o rótulo no painel (`painel.js`, tabelas `STATUS_*` e `EVENTOS`).
 
 - **Nó único:** SQLite e disco local; não há escala horizontal nem alta disponibilidade.
 - **Sem exclusão/retenção automática** de dados; a auditoria é imutável por desenho.
-- **TCP do SiCA sem autenticação nem TLS:** manter em rede interna.
+- **TCP do SiCA com TLS, mas sem autenticação de usuário:** manter em rede interna.
 - **Identificação do signatário** pelo acesso ao e-mail (sem OTP).
 - **Certificado de teste:** o selo aparece como "não confiável" em leitores de PDF.
 - **Expiração e cancelamento de envelopes** (`EXPIRED`/`CANCELED`) ainda não implementados.
